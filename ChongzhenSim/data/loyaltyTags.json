@@ -1,0 +1,7 @@
+[
+  { "min": 0, "max": 19, "label": "心怀异志", "color": "#c0392b" },
+  { "min": 20, "max": 39, "label": "貌合神离", "color": "#e67e22" },
+  { "min": 40, "max": 59, "label": "奉命行事", "color": "#f39c12" },
+  { "min": 60, "max": 79, "label": "忠心耿耿", "color": "#27ae60" },
+  { "min": 80, "max": 100, "label": "肝脑涂地", "color": "#2980b9" }
+]

@@ -1,0 +1,16 @@
+{
+  "totalDays": 30,
+  "gameTitle": "崇祯皇帝模拟器",
+  "startYear": 3,
+  "startMonth": 4,
+  "storyMode": "llm",
+  "apiBase": "http://localhost:3002",
+  "phases": ["morning", "afternoon", "evening"],
+  "phaseLabels": {
+    "morning": "早朝",
+    "afternoon": "午后",
+    "evening": "夜间"
+  },
+  "loyaltyMax": 100,
+  "autoSave": true
+}

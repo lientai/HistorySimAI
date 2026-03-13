@@ -1,0 +1,24 @@
+{
+  "treasury": 500000,
+  "grain": 30000,
+  "militaryStrength": 60,
+  "civilMorale": 35,
+  "borderThreat": 75,
+  "disasterLevel": 70,
+  "corruptionLevel": 80,
+  "provinces": [
+    { "name": "北直隶", "status": "京师所在，粮价飞涨，流民涌入", "threat": "medium" },
+    { "name": "陕西", "status": "旱灾严重，农民军蛰伏待起", "threat": "high" },
+    { "name": "山东", "status": "登州兵变隐患，孔有德部欠饷", "threat": "high" },
+    { "name": "辽东", "status": "后金虎视眈眈，关宁防线承压", "threat": "critical" },
+    { "name": "河南", "status": "灾荒蔓延，流民四散", "threat": "high" },
+    { "name": "江南", "status": "赋税重镇，漕运受阻", "threat": "medium" },
+    { "name": "四川", "status": "相对安定，但土司不稳", "threat": "low" },
+    { "name": "湖广", "status": "粮仓要地，尚且平稳", "threat": "low" }
+  ],
+  "externalThreats": [
+    { "name": "后金(清)", "leader": "皇太极", "status": "整军经武，蒙古归附", "level": "critical" },
+    { "name": "农民军", "leader": "李自成等", "status": "蛰伏山中，等待时机", "level": "high" },
+    { "name": "登州叛军", "leader": "孔有德", "status": "欠饷十月，怨气冲天", "level": "high" }
+  ]
+}
