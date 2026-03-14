@@ -88,6 +88,19 @@ export function pushCurrentTurnToHistory(state, chosenChoice, effects) {
   const key = `${state.currentDay}_${state.currentPhase}`;
   if (storyCache.key !== key || !storyCache.data) return;
   const history = state.storyHistory || [];
+  
+  const existingIndex = history.findIndex(entry => entry.key === key);
+  if (existingIndex >= 0) {
+    const updated = [...history];
+    updated[existingIndex] = {
+      ...updated[existingIndex],
+      chosenChoice: chosenChoice ?? undefined,
+      effects: effects ?? null,
+    };
+    setState({ storyHistory: updated });
+    return;
+  }
+  
   setState({
     storyHistory: [
       ...history,
@@ -137,11 +150,7 @@ function renderDeltaCard(container, effects, state) {
     const isPositive = invertColor ? delta < 0 : delta > 0;
     val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
     const sign = delta > 0 ? "+" : "";
-    if (Math.abs(delta) >= 1000) {
-      val.textContent = sign + (delta / 10000).toFixed(1) + "万";
-    } else {
-      val.textContent = sign + delta;
-    }
+    val.textContent = sign + delta.toLocaleString();
     row.appendChild(lbl);
     row.appendChild(val);
     card.appendChild(row);
@@ -249,13 +258,17 @@ function applyEffects(effects) {
   if (!effects) return;
   const s = getState();
   const nation = { ...(s.nation || {}) };
-  const numKeys = ["treasury", "grain", "militaryStrength", "civilMorale", "borderThreat", "disasterLevel", "corruptionLevel"];
-  numKeys.forEach((key) => {
-    if (typeof effects[key] === "number") {
-      nation[key] = (nation[key] || 0) + effects[key];
-      if (key !== "treasury" && key !== "grain") {
-        nation[key] = Math.max(0, Math.min(100, nation[key]));
-      }
+  
+  const PERCENT_KEYS = ["militaryStrength", "civilMorale", "borderThreat", "disasterLevel", "corruptionLevel"];
+  
+  Object.entries(effects).forEach(([key, value]) => {
+    if (typeof value !== "number") return;
+    
+    if (key === "treasury" || key === "grain") {
+      nation[key] = Math.max(0, (nation[key] || 0) + value);
+    } else if (PERCENT_KEYS.includes(key)) {
+      const clampedDelta = Math.max(-30, Math.min(30, value));
+      nation[key] = Math.max(0, Math.min(100, (nation[key] || 0) + clampedDelta));
     }
   });
   setState({ nation });
@@ -264,7 +277,8 @@ function applyEffects(effects) {
     const loyalty = { ...(s.loyalty || {}) };
     for (const [id, delta] of Object.entries(effects.loyalty)) {
       if (typeof delta !== "number") continue;
-      loyalty[id] = Math.max(0, Math.min(100, (loyalty[id] || 0) + delta));
+      const clampedDelta = Math.max(-20, Math.min(20, delta));
+      loyalty[id] = Math.max(0, Math.min(100, (loyalty[id] || 0) + clampedDelta));
     }
     setState({ loyalty });
   }
@@ -278,134 +292,142 @@ function renderStoryLoading(container) {
   return block;
 }
 
-export async function renderStoryTurn(state, container, onChoice, options = {}) {
-  const renderId = options && options.renderId;
-  if (renderId != null && container._storyRenderId !== renderId) return;
-
-  // 弹幕层挂在主内容区首位（main-view），不在单个剧情块内
+function cleanupDanmuLayer(container) {
   if (container._edictDanmuLayer) {
     stopDanmu(container._edictDanmuLayer);
     container._edictDanmuLayer.remove();
     container._edictDanmuLayer = null;
   }
+}
+
+function setupDanmuLayer(container) {
+  cleanupDanmuLayer(container);
   const danmuLayer = document.createElement("div");
   danmuLayer.className = "edict-danmu-layer";
   container.insertBefore(danmuLayer, container.firstChild);
   container._edictDanmuLayer = danmuLayer;
+  return danmuLayer;
+}
 
-  const history = state.storyHistory || [];
-  const config = state.config || {};
-  const phaseLabels = config.phaseLabels || { morning: "早朝", afternoon: "午后", evening: "夜间" };
+function startDanmu(container) {
+  if (container._edictDanmuLayer) {
+    startDanmuForEdict(container._edictDanmuLayer);
+  }
+}
 
+function renderChosenChoice(container, chosenChoice) {
+  const choiceWrap = document.createElement("div");
+  choiceWrap.className = "story-choice-history";
+  
+  const choiceLabel = document.createElement("span");
+  choiceLabel.className = "story-choice-history__label";
+  choiceLabel.textContent = "圣旨：";
+  choiceWrap.appendChild(choiceLabel);
+  
+  const choiceText = document.createElement("span");
+  choiceText.textContent = chosenChoice.text || "";
+  choiceWrap.appendChild(choiceText);
+  
+  if (chosenChoice.hint) {
+    const choiceHint = document.createElement("span");
+    choiceHint.className = "story-choice-history__hint";
+    choiceHint.textContent = chosenChoice.hint;
+    choiceWrap.appendChild(choiceHint);
+  }
+  
+  container.appendChild(choiceWrap);
+}
+
+function renderStoryHistory(container, history, phaseLabels, state, renderId) {
   for (const entry of history) {
-    if (renderId != null && container._storyRenderId !== renderId) return;
+    if (renderId != null && container._storyRenderId !== renderId) return false;
+    
     const data = entry.data;
     const [day, phase] = entry.key.split("_");
     const phaseLabel = phaseLabels[phase] || phase;
+    
     const label = document.createElement("div");
     label.className = "story-history-label";
     label.textContent = `第${day}天 · ${phaseLabel}`;
     container.appendChild(label);
+    
     const block = document.createElement("div");
     block.className = "edict-block story-history-block";
     const historyText = buildBlockText(data);
     renderPseudoLines(block, historyText);
     container.appendChild(block);
+    
     if (entry.chosenChoice && entry.chosenChoice.text) {
-      const choiceWrap = document.createElement("div");
-      choiceWrap.className = "story-choice-history";
-      const choiceLabel = document.createElement("span");
-      choiceLabel.className = "story-choice-history__label";
-      choiceLabel.textContent = "圣旨：";
-      choiceWrap.appendChild(choiceLabel);
-      const choiceText = document.createElement("span");
-      choiceText.textContent = entry.chosenChoice.text || "";
-      choiceWrap.appendChild(choiceText);
-      if (entry.chosenChoice.hint) {
-        const choiceHint = document.createElement("span");
-        choiceHint.className = "story-choice-history__hint";
-        choiceHint.textContent = entry.chosenChoice.hint;
-        choiceWrap.appendChild(choiceHint);
-      }
-      container.appendChild(choiceWrap);
-      // 在每条历史圣旨下方展示国家属性与忠诚变化
+      renderChosenChoice(container, entry.chosenChoice);
       renderDeltaCard(container, entry.effects, state);
     }
   }
+  return true;
+}
 
+function renderStoryError(container, errorMessage, retryCallback) {
+  const block = document.createElement("div");
+  block.className = "edict-block";
+  block.textContent = errorMessage;
+  
+  const retryBtn = document.createElement("button");
+  retryBtn.className = "story-action-btn";
+  retryBtn.textContent = "重新生成";
+  retryBtn.addEventListener("click", retryCallback);
+  
+  block.appendChild(retryBtn);
+  container.appendChild(block);
+}
+
+async function loadStoryData(state, container, renderId, onChoice, options) {
   const phaseKey = state.currentPhase || "morning";
   const path = `data/story/day${state.currentDay}_${phaseKey}.json`;
   const cacheKey = `${state.currentDay}_${phaseKey}`;
+  const config = state.config || {};
 
-  let data = null;
   if (storyCache.key === cacheKey && storyCache.data) {
-    data = storyCache.data;
+    return storyCache.data;
   }
 
   const useLLM = config.storyMode === "llm" && (config.apiBase || "").trim().length > 0;
+  let data = null;
 
-  if (data == null && useLLM) {
+  if (useLLM) {
     const loadingBlock = renderStoryLoading(container);
-
-    const lastChoice =
-      state.lastChoiceId != null
-        ? { id: state.lastChoiceId, text: state.lastChoiceText || "", hint: state.lastChoiceHint }
-        : null;
+    const lastChoice = state.lastChoiceId != null
+      ? { id: state.lastChoiceId, text: state.lastChoiceText || "", hint: state.lastChoiceHint }
+      : null;
+    
     data = await requestStoryTurn(state, lastChoice);
     loadingBlock.remove();
-    if (renderId != null && container._storyRenderId !== renderId) return;
-
-    if (data == null) {
-      try {
-        data = await loadJSON(path);
-      } catch (e) {
-        if (renderId != null && container._storyRenderId !== renderId) return;
-        const errBlock = document.createElement("div");
-        errBlock.className = "edict-block";
-        errBlock.textContent = "本回合剧情生成失败，请检查网络或后端配置。";
-        const retryBtn = document.createElement("button");
-        retryBtn.className = "story-action-btn";
-        retryBtn.textContent = "重新生成";
-        retryBtn.addEventListener("click", () => {
-          storyCache = { key: null, data: null };
-          container.innerHTML = "";
-          renderStoryTurn(getState(), container, onChoice, options);
-        });
-        errBlock.appendChild(retryBtn);
-        container.appendChild(errBlock);
-        return;
-      }
-    }
+    
+    if (renderId != null && container._storyRenderId !== renderId) return null;
   }
 
   if (data == null) {
     try {
       data = await loadJSON(path);
     } catch (e) {
-      if (renderId != null && container._storyRenderId !== renderId) return;
-      const block = document.createElement("div");
-      block.className = "edict-block";
-      block.textContent = "本回合剧情尚未准备好，请稍后再试。";
-      const retryBtn2 = document.createElement("button");
-      retryBtn2.className = "story-action-btn";
-      retryBtn2.textContent = "重新生成";
-      retryBtn2.addEventListener("click", () => {
+      if (renderId != null && container._storyRenderId !== renderId) return null;
+      
+      const errorMessage = useLLM 
+        ? "本回合剧情生成失败，请检查网络或后端配置。"
+        : "本回合剧情尚未准备好，请稍后再试。";
+      
+      renderStoryError(container, errorMessage, () => {
         storyCache = { key: null, data: null };
         container.innerHTML = "";
         renderStoryTurn(getState(), container, onChoice, options);
       });
-      block.appendChild(retryBtn2);
-      container.appendChild(block);
-      return;
+      return null;
     }
   }
 
   storyCache = { key: cacheKey, data };
+  return data;
+}
 
-  if (lastAppliedKey !== cacheKey) {
-    lastAppliedKey = cacheKey;
-  }
-
+function updateStoryState(data) {
   if (data.news) {
     setState({ newsToday: data.news });
   }
@@ -415,40 +437,46 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
   if (data.header && data.header.weather) {
     setState({ weather: data.header.weather });
   }
+}
 
-  if (renderId != null && container._storyRenderId !== renderId) return;
+function createChoiceButton(choice, onChoice) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "story-action-btn";
+  btn.innerHTML = `<div>${choice.text}</div>${choice.hint ? `<span>${choice.hint}</span>` : ""}`;
+  btn.addEventListener("click", () => {
+    onChoice(choice.id, choice.text, choice.hint, choice.effects);
+  });
+  return btn;
+}
 
+function renderCurrentTurn(container, data, state, phaseLabels, onChoice) {
+  const phaseKey = state.currentPhase || "morning";
   const currentPhaseLabel = phaseLabels[phaseKey] || phaseKey;
+  
   const currentLabel = document.createElement("div");
   currentLabel.className = "story-history-label story-current-label";
   currentLabel.textContent = `当前 · 第${state.currentDay}天 · ${currentPhaseLabel}`;
   container.appendChild(currentLabel);
-
-  // 当前回合容器（不再内嵌弹幕层，弹幕在主内容区顶部）
+  
   const currentWrap = document.createElement("div");
   currentWrap.className = "edict-current-wrap";
   container.appendChild(currentWrap);
-
+  
   const textBlock = document.createElement("div");
   textBlock.className = "edict-block";
   const fullText = buildBlockText(data);
   renderPseudoLines(textBlock, fullText);
   currentWrap.appendChild(textBlock);
-
+  
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "story-actions";
-
+  
   (data.choices || []).forEach((choice) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "story-action-btn";
-    btn.innerHTML = `<div>${choice.text}</div>${choice.hint ? `<span>${choice.hint}</span>` : ""}`;
-    btn.addEventListener("click", () => {
-      onChoice(choice.id, choice.text, choice.hint, choice.effects);
-    });
+    const btn = createChoiceButton(choice, onChoice);
     actionsWrap.appendChild(btn);
   });
-
+  
   const customBtn = document.createElement("button");
   customBtn.type = "button";
   customBtn.className = "story-action-btn story-action-btn--custom";
@@ -457,11 +485,46 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
     showCustomEdictPanel(onChoice);
   });
   actionsWrap.appendChild(customBtn);
-
+  
   currentWrap.appendChild(actionsWrap);
+}
 
-  // 在主内容区弹幕层启动飘屏（数据来自 state.publicOpinion）
-  startDanmuForEdict(container._edictDanmuLayer);
+export async function renderStoryTurn(state, container, onChoice, options = {}) {
+  const renderId = options && options.renderId;
+  if (renderId != null && container._storyRenderId !== renderId) return;
+
+  setupDanmuLayer(container);
+
+  const config = state.config || {};
+  const phaseLabels = config.phaseLabels || { morning: "早朝", afternoon: "午后", evening: "夜间" };
+  const history = state.storyHistory || [];
+  
+  if (!renderStoryHistory(container, history, phaseLabels, state, renderId)) return;
+
+  const data = await loadStoryData(state, container, renderId, onChoice, options);
+  if (data == null) return;
+
+  if (data.lastChoiceEffects && state.lastChoiceId === "custom_edict") {
+    const lastEntry = history[history.length - 1];
+    if (lastEntry && lastEntry.chosenChoice && !lastEntry.effects) {
+      lastEntry.effects = data.lastChoiceEffects;
+      applyEffects(data.lastChoiceEffects);
+      const updatedHistory = [...history];
+      updatedHistory[updatedHistory.length - 1] = lastEntry;
+      setState({ storyHistory: updatedHistory });
+      
+      const historyContainer = container.querySelector('.story-history-container') || container;
+      renderDeltaCard(historyContainer, data.lastChoiceEffects, state);
+    }
+  }
+
+  updateStoryState(data);
+
+  if (renderId != null && container._storyRenderId !== renderId) return;
+
+  renderCurrentTurn(container, data, state, phaseLabels, onChoice);
+
+  startDanmu(container);
 }
 
 function showCustomEdictPanel(onChoice) {

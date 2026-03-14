@@ -6,11 +6,9 @@ export function getStatBarClass(value, invert) {
 }
 
 export function formatTreasury(num) {
-  if (num >= 10000) return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万两";
-  return num + "两";
+  return num.toLocaleString() + "两";
 }
 
 export function formatGrain(num) {
-  if (num >= 10000) return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万石";
-  return num + "石";
+  return num.toLocaleString() + "石";
 }

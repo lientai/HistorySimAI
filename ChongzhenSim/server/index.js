@@ -13,14 +13,14 @@ try {
   const raw = fs.readFileSync(configPath, "utf8");
   config = JSON.parse(raw);
 } catch (e) {
-  console.error("未找到 server/config.json 或格式错误。请复制 config.example.json 为 config.json 并填写 LLM_API_KEY。");
+  console.error("未找到 server/config.json 或格式错误。请创建 config.json 并填写 LLM_API_KEY。");
   process.exit(1);
 }
 
 const LLM_API_KEY = config.LLM_API_KEY || "";
-const LLM_API_BASE = (config.LLM_API_BASE || "https://epone.ggb.today").replace(/\/$/, "");
-const LLM_MODEL = config.LLM_MODEL || "grok-4-1-fast-non-reasoning";
-const LLM_CHAT_MODEL = config.LLM_CHAT_MODEL || "grok-4-1-fast-non-reasoning";
+const LLM_API_BASE = (config.LLM_API_BASE || "https://open.bigmodel.cn/api/paas/v4").replace(/\/$/, "");
+const LLM_MODEL = config.LLM_MODEL || "glm-4-flash";
+const LLM_CHAT_MODEL = config.LLM_CHAT_MODEL || "glm-4-flash";
 
 const charactersPath = path.join(__dirname, "..", "data", "characters.json");
 let charactersData = null;
@@ -37,9 +37,14 @@ const SYSTEM_PROMPT = `你是《崇祯皇帝模拟器》游戏的剧情写手。
 {
   "header": { "time": "具体时间描述", "season": "季节", "weather": "天气描述", "location": "地点" },
   "storyParagraphs": ["段落1字符串", "段落2字符串", ...],
+  "lastChoiceEffects": {
+    "treasury": 数值变化, "grain": 数值变化, "militaryStrength": 数值变化,
+    "civilMorale": 数值变化, "borderThreat": 数值变化, "disasterLevel": 数值变化,
+    "corruptionLevel": 数值变化, "loyalty": { "大臣id": 数值变化 }
+  },
   "choices": [
     { "id": "唯一id", "text": "选项文案", "hint": "可选提示",
-      "effects": { "treasury": 数值变化, "grain": 数值变化, "militaryStrength": 数值变化, "civilMorale": 数值变化, "borderThreat": 数值变化, "disasterLevel": 数值变化, "corruptionLevel": 数值变化, "loyalty": { "大臣id": 数值变化 } }
+      "effects": { "treasury": 数值变化, "grain": 数值变化, ... }
     }, ...
   ]
 }
@@ -47,11 +52,30 @@ const SYSTEM_PROMPT = `你是《崇祯皇帝模拟器》游戏的剧情写手。
   "news": [ { "title": "奏折标题", "summary": "简述", "province": "涉及地区" } ],
   "publicOpinion": [ { "source": "来源（如：京城百姓/江南士绅/边军将士）", "text": "舆论内容" } ]
 
+【重要】lastChoiceEffects 和 choices 中的 effects 必须是 JSON 字段，不能写在 storyParagraphs 里面！例如：
+- 正确：{"lastChoiceEffects": {"treasury": 500000, "corruptionLevel": -10}}
+- 错误：storyParagraphs 里面写"国库增加五百万两"
+
+【重要】数值转换必须准确！中文数字与阿拉伯数字对应关系：
+- 一万两 = 10,000
+- 十万两 = 100,000
+- 五十万两 = 500,000
+- 一百万两 = 1,000,000
+- 五百万两 = 5,000,000
+- 一千万两 = 10,000,000
+- 七千万两 = 70,000,000
+如果剧情写"抄家得七千万两"，则 effects.treasury 必须是 70000000，不是 7000000！
+
 要求：
 - storyParagraphs 总字数 400~800 字，不少于 4 段
 - 涉及大臣对话时，使用大臣全名（如"毕自严"、"梁廷栋"）
+- lastChoiceEffects：评估上一回合玩家选择（尤其是自拟诏书）的实际执行效果。如果上一回合是自拟诏书，必须根据诏书内容合理推演效果
 - choices 必须恰好 3 个，每个选项的 effects 须合理反映该决策对国家数值和大臣忠诚度的影响
-- effects 中的数值范围：国家数值变化通常 -15 到 +15，忠诚度变化通常 -5 到 +5
+- effects 中的数值范围（单位均为"两"或"石"，不是"万两"或"万石"）：
+  * treasury（国库，单位两）：支出如发军饷约 -100000 到 -300000，收入如抄家可高达数百万两（李自成在北京抄家得七千万两），根据剧情合理设定
+  * grain（粮储，单位石）：通常 -50000 到 +50000，开仓放粮约 -5000 到 -20000，征收粮草约 +3000 到 +10000
+  * militaryStrength、civilMorale、borderThreat、disasterLevel、corruptionLevel（0-100指数）：通常 -15 到 +15
+  * loyalty（忠诚度0-100）：通常 -5 到 +5
 - 剧情须贴合明末真实历史背景，不可出现架空、穿越、科幻元素
 - id 用英文或数字，如 increase_tax`;
 
@@ -62,18 +86,40 @@ function buildUserMessage(body) {
   const phaseLabel = phase === "morning" ? "早朝" : phase === "afternoon" ? "午后" : "夜间";
 
   const nation = state.nation || {};
-  const nationStr = `国库=${nation.treasury ?? "?"}两, 粮储=${nation.grain ?? "?"}石, 军力=${nation.militaryStrength ?? "?"}, 民心=${nation.civilMorale ?? "?"}, 边患=${nation.borderThreat ?? "?"}, 天灾=${nation.disasterLevel ?? "?"}, 贪腐=${nation.corruptionLevel ?? "?"}`;
+  const treasury = nation.treasury ?? 0;
+  const grain = nation.grain ?? 0;
+  const militaryStrength = nation.militaryStrength ?? 50;
+  const civilMorale = nation.civilMorale ?? 50;
+  const borderThreat = nation.borderThreat ?? 50;
+  const disasterLevel = nation.disasterLevel ?? 50;
+  const corruptionLevel = nation.corruptionLevel ?? 50;
+  
+  const treasuryStatus = treasury >= 5000000 ? "极度充裕" : treasury >= 1000000 ? "充裕" : treasury >= 300000 ? "一般" : treasury >= 100000 ? "紧张" : "极度空虚";
+  const grainStatus = grain >= 100000 ? "极度充裕" : grain >= 50000 ? "充裕" : grain >= 20000 ? "一般" : grain >= 10000 ? "紧张" : "极度空虚";
+  const moraleStatus = civilMorale >= 70 ? "民心归附" : civilMorale >= 50 ? "民心尚可" : civilMorale >= 30 ? "民心不稳" : "民怨沸腾";
+  const borderStatus = borderThreat >= 70 ? "边患严重" : borderThreat >= 50 ? "边患尚可" : borderThreat >= 30 ? "边境安稳" : "边境太平";
+  const corruptionStatus = corruptionLevel >= 70 ? "贪腐横行" : corruptionLevel >= 50 ? "贪腐尚可" : corruptionLevel >= 30 ? "吏治清明" : "吏治严明";
+  
+  const nationStr = `国库=${treasury.toLocaleString()}两（${treasuryStatus}）, 粮储=${grain.toLocaleString()}石（${grainStatus}）, 军力=${militaryStrength}, 民心=${civilMorale}（${moraleStatus}）, 边患=${borderThreat}（${borderStatus}）, 天灾=${disasterLevel}, 贪腐=${corruptionLevel}（${corruptionStatus}）`;
 
   let base = "";
   if (lastChoiceId == null || lastChoiceText == null) {
-    base = `当前是崇祯三年第 ${day} 天 ${phaseLabel}。国势：${nationStr}。这是新开档第一回合，请生成【第 ${day} 天 ${phaseLabel}】的完整剧情与 3 个选项。只输出上述 JSON，不要其他内容。`;
+    base = `当前是崇祯三年第 ${day} 天 ${phaseLabel}。国势：${nationStr}。这是新开档第一回合，请生成【第 ${day} 天 ${phaseLabel}】的完整剧情与 3 个选项。lastChoiceEffects 设为 null。只输出上述 JSON，不要其他内容。`;
   } else {
-    base = `当前是崇祯三年第 ${day} 天 ${phaseLabel}。国势：${nationStr}。上一回合陛下选择了：id=${lastChoiceId}，文案="${lastChoiceText}"。请根据这个选择推进剧情，生成本回合的完整内容。只输出上述 JSON，不要其他内容。`;
+    const isCustomEdict = lastChoiceId === "custom_edict";
+    const effectHint = isCustomEdict 
+      ? `【重要】上一回合是"自拟诏书"，你必须在 lastChoiceEffects 中根据诏书内容推演实际执行效果！例如：如果诏书涉及抄家，则 treasury 应大幅增加；如果涉及发军饷，则 treasury 应减少、militaryStrength 增加。` 
+      : `上一回合是预设选项，lastChoiceEffects 根据选项内容推演效果即可。`;
+    
+    base = `当前是崇祯三年第 ${day} 天 ${phaseLabel}。国势：${nationStr}。上一回合陛下选择了：id=${lastChoiceId}，文案="${lastChoiceText}"。
+${effectHint}
+【重要】剧情必须根据当前国势合理推演！如果国库充裕，不能写"国库空虚"；如果民心归附，不能写"民怨沸腾"。
+请根据这个选择推进剧情，生成本回合的完整内容。只输出上述 JSON，不要其他内容。`;
   }
 
   if (charactersData && Array.isArray(charactersData.ministers) && charactersData.ministers.length > 0) {
     const ministerList = charactersData.ministers.map((m) => `${m.id}（${m.name}，${m.role}）`).join("、");
-    base += `\n\n当前大臣 id 与名字对应（choices 中 effects.loyalty 的 key 必须从下列 id 中选取）：${ministerList}`;
+    base += `\n\n当前大臣 id 与名字对应（effects.loyalty 的 key 必须从下列 id 中选取）：${ministerList}`;
   }
 
   if (courtChatSummary && typeof courtChatSummary === "string" && courtChatSummary.trim()) {
@@ -95,7 +141,7 @@ app.post("/api/chongzhen/story", async (req, res) => {
   ];
 
   try {
-    const response = await fetch(`${LLM_API_BASE}/v1/chat/completions`, {
+    const response = await fetch(`${LLM_API_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -180,7 +226,7 @@ app.post("/api/chongzhen/ministerChat", async (req, res) => {
   messages.push(...trimmedHistory);
 
   try {
-    const response = await fetch(`${LLM_API_BASE}/v1/chat/completions`, {
+    const response = await fetch(`${LLM_API_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -228,7 +274,7 @@ app.post("/api/chongzhen/ministerChat", async (req, res) => {
   }
 });
 
-const PORT = config.PORT != null ? config.PORT : 3001;
+const PORT = config.PORT != null ? config.PORT : 3002;
 app.listen(PORT, () => {
   console.log(`ChongzhenSim proxy listening on http://localhost:${PORT} (routes: /api/chongzhen/story, /api/chongzhen/ministerChat)`);
   if (!LLM_API_KEY) console.warn("config.json 中 LLM_API_KEY 未填写; API 将返回 500。");
