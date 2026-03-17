@@ -1,0 +1,232 @@
+:root {
+  --color-accent: #8B0000;
+  --color-accent-soft: #a52a2a;
+  --color-gold: #D4A017;
+  --color-gold-soft: #c9a84c;
+  --color-bg-main: #f5f0e8;
+  --color-bg-dark: #1a1a2e;
+  --color-bg-topbar: rgba(58, 18, 18, 0.96);
+  --color-bg-bottombar: rgba(42, 22, 18, 0.96);
+  --color-text-main: #2c1810;
+  --color-text-sub: #7a6a5e;
+  --color-text-light: #f5f0e8;
+  --color-border-soft: #d4c4a8;
+  --color-block-bg: #faf6ef;
+  --shadow-soft: 0 6px 20px rgba(80, 40, 20, 0.25);
+  --color-heading-main: #8B0000;
+  --color-heading-sub: #7a6a5e;
+  --color-danger: #c0392b;
+  --color-success: #27ae60;
+  --color-warning: #e67e22;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-main);
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--color-bg-topbar);
+  box-shadow: 0 2px 12px rgba(60, 20, 10, 0.4);
+  z-index: 10;
+}
+
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topbar-subtitle {
+  font-size: 11px;
+  color: var(--color-gold-soft);
+}
+
+#topbar-status.topbar-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  width: 100%;
+  flex-shrink: 0;
+  color: var(--color-gold);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-settings-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(212, 160, 23, 0.3);
+  color: var(--color-gold);
+}
+
+#bottombar {
+  display: flex;
+  background: var(--color-bg-bottombar);
+  box-shadow: 0 -2px 12px rgba(60, 20, 10, 0.4);
+}
+
+.bottom-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-gold-soft);
+  position: relative;
+}
+
+.bottom-tab-label-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bottom-tab__badge {
+  position: absolute;
+  top: 2px;
+  right: 30%;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-tab__badge--visible {
+  display: flex;
+}
+
+.bottom-tab-icon {
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.bottom-tab--active {
+  color: var(--color-gold);
+  position: relative;
+}
+
+.bottom-tab--active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  border-radius: 999px;
+  background-color: var(--color-gold);
+}
+
+.edict-block {
+  background-color: var(--color-block-bg);
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-soft);
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-left: 3px solid var(--color-accent);
+}
+
+.edict-block + .edict-block {
+  margin-top: 10px;
+}
+
+.edict-block-header {
+  margin-bottom: 4px;
+  color: var(--color-gold-soft);
+}
+
+.story-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-action-btn {
+  width: 100%;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--color-block-bg);
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-text-main);
+  font-size: 13px;
+  text-align: left;
+  box-shadow: 0 2px 6px rgba(80, 40, 20, 0.15);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.story-action-btn > div {
+  display: block;
+}
+
+.story-action-btn > span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.story-action-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(80, 40, 20, 0.2);
+}
+
+.topbar-goal-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.goal-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--color-accent);
+  color: #fff;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.topbar-goal-text {
+  font-size: 11px;
+  color: var(--color-gold-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}

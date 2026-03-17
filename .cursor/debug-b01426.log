@@ -1,0 +1,12 @@
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"edict","previousView":"edict"},"timestamp":1773067350480,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"edict","previousView":"edict"},"timestamp":1773067350719,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"edict","previousView":"edict"},"timestamp":1773067351640,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"settings","previousView":"edict"},"timestamp":1773067352351,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"start","previousView":"edict"},"timestamp":1773067355660,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"startView.js:load-error","message":"intro.json load FAILED","data":{"error":"SyntaxError: Expected ',' or ']' after array element in JSON at position 70 (line 4 column 26)"},"timestamp":1773067355670,"hypothesisId":"H1"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"start","previousView":"edict"},"timestamp":1773067357834,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"startView.js:load-error","message":"intro.json load FAILED","data":{"error":"SyntaxError: Expected ',' or ']' after array element in JSON at position 70 (line 4 column 26)"},"timestamp":1773067357856,"hypothesisId":"H1"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"start","previousView":"edict"},"timestamp":1773067362091,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"startView.js:load-error","message":"intro.json load FAILED","data":{"error":"SyntaxError: Expected ',' or ']' after array element in JSON at position 70 (line 4 column 26)"},"timestamp":1773067362102,"hypothesisId":"H1"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"edict","previousView":"edict"},"timestamp":1773067563381,"hypothesisId":"H2"}
+{"sessionId":"b01426","location":"router.js:setView","message":"setView called","data":{"id":"start","previousView":"edict"},"timestamp":1773067565168,"hypothesisId":"H2"}

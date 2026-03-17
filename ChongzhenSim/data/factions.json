@@ -1,0 +1,44 @@
+{
+  "factions": [
+    {
+      "id": "donglin",
+      "name": "东林党",
+      "color": "#2e7d32",
+      "description": "以江南士大夫为主体的政治集团，主张清廉、正直、忠君。在魏忠贤覆灭后重新崛起，把持朝政要职，但内部也有派系之争。",
+      "stance": "主张强硬对外，反对与后金议和；主张轻徭薄赋，反对加征三饷。",
+      "members": ["bi_ziyan", "sun_chengzong"]
+    },
+    {
+      "id": "eunuch",
+      "name": "阉党余部",
+      "color": "#c62828",
+      "description": "魏忠贤覆灭后残余的政治势力。表面上已与阉党划清界限，暗中仍以排斥东林、迎合圣意为手段维护自身利益。",
+      "stance": "无明确政见，以迎合君主、排斥异己为主要策略。善于权术斗争。",
+      "members": ["wen_tiren"]
+    },
+    {
+      "id": "neutral",
+      "name": "中立派",
+      "color": "#1565c0",
+      "description": "不依附任何党派的务实官员，以实际能力和政绩立足。在党争激烈的朝堂中，他们往往成为各方拉拢或打击的对象。",
+      "stance": "务实为主，关注具体问题的解决方案，不参与党争。",
+      "members": ["liang_tingdong", "wang_yongguang", "lin_qian", "han_jisi", "zhang_fengxiang"]
+    },
+    {
+      "id": "military",
+      "name": "军事将领",
+      "color": "#e65100",
+      "description": "统兵在外的方面大员，远离朝堂争斗，但深受军饷问题困扰。他们的忠诚很大程度上取决于朝廷是否能保障军需供给。",
+      "stance": "关注军饷供给和战略部署，对朝堂党争不感兴趣。",
+      "members": ["hong_chengchou"]
+    },
+    {
+      "id": "imperial",
+      "name": "帝党",
+      "color": "#6a1b9a",
+      "description": "直接效忠皇帝的内廷力量，以司礼监太监为核心。崇祯铲除魏忠贤后重新整肃内廷，但太监集团的权力结构依然存在。",
+      "stance": "唯皇命是从，是皇帝了解朝堂内外的耳目和执行意志的工具。",
+      "members": ["cao_huachun"]
+    }
+  ]
+}

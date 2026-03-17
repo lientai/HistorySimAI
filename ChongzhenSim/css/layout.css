@@ -1,0 +1,54 @@
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  background-color: var(--color-bg-main);
+  box-shadow: var(--shadow-soft);
+}
+
+#topbar {
+  flex: 0 0 auto;
+  min-height: 52px;
+  height: auto;
+}
+
+#bottombar {
+  flex: 0 0 auto;
+  height: 56px;
+}
+
+#main-view {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 12px 14px;
+}
+
+#main-view.main-view--edict {
+  position: relative;
+}
+
+@media (min-height: 700px) {
+  #topbar {
+    min-height: 56px;
+  }
+  #bottombar {
+    height: 60px;
+  }
+}
