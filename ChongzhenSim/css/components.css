@@ -207,6 +207,11 @@
   color: var(--color-danger);
 }
 
+.story-delta-value--appointment {
+  color: var(--color-primary, #8B0000);
+  font-size: 14px;
+}
+
 /* ===== 诏书飘屏弹幕（主内容区顶部 sticky 带，不在单块剧情内） ===== */
 .edict-danmu-layer {
   position: sticky;
@@ -1642,4 +1647,352 @@
 
 .custom-edict-submit:not(:disabled):active {
   opacity: 0.85;
+}
+
+/* ===== 任命弹窗 ===== */
+.appointment-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 16px;
+}
+
+.appointment-dialog-card {
+  background: var(--color-block-bg);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+}
+
+.appointment-dialog-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: linear-gradient(135deg, #8B0000 0%, #a52a2a 100%);
+}
+
+.appointment-dialog-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-gold);
+  letter-spacing: 2px;
+}
+
+.appointment-dialog-card__close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-gold);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.appointment-dialog-card__close:hover {
+  opacity: 1;
+}
+
+.appointment-dialog-card__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.appointment-dialog-position-info {
+  background: #faf6ef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-soft);
+}
+
+.position-info-item {
+  font-size: 12px;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.position-info-item:last-child {
+  margin-bottom: 0;
+}
+
+.position-info-item span {
+  font-weight: 600;
+  color: var(--color-text-sub);
+  margin-right: 4px;
+}
+
+.appointment-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: var(--color-bg-main);
+  color: var(--color-text-main);
+  box-sizing: border-box;
+}
+
+.appointment-search-input:focus {
+  outline: none;
+  border-color: var(--color-gold);
+}
+
+.appointment-character-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+}
+
+.appointment-character-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--color-bg-main);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.appointment-character-item:hover {
+  background: #faf6ef;
+  border-color: var(--color-gold);
+}
+
+.appointment-character-item:active {
+  background: #f0e8d8;
+}
+
+.appointment-character-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #bfaf90 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--color-accent);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.appointment-character-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.appointment-character-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.appointment-character-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 2px;
+}
+
+.appointment-character-meta {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  margin-bottom: 2px;
+}
+
+.appointment-character-loyalty {
+  font-size: 11px;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.appointment-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.appointment-dialog-card__footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border-soft);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.appointment-dialog-cancel {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-block-bg);
+  color: var(--color-text-main);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.appointment-dialog-cancel:hover {
+  background: #f0e8d8;
+}
+
+/* ===== 官位卡片增强 ===== */
+.court-position-card {
+  margin-bottom: 12px;
+}
+
+.court-position-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent);
+  border-bottom: 1px solid var(--color-border-soft);
+  margin-bottom: 8px;
+}
+
+.court-position-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-sub);
+}
+
+.court-position-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  padding: 6px 8px;
+  border-left: 3px solid var(--color-accent);
+  background: #faf6ef;
+  margin: 8px 0 6px;
+}
+
+.court-position-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.court-position-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--color-block-bg);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.court-position-item:hover {
+  background: #faf6ef;
+  border-color: var(--color-gold);
+}
+
+.court-position-item--vacant {
+  background: #faf8f4;
+  border-style: dashed;
+}
+
+.court-position-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #bfaf90 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-accent);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.court-position-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.court-position-avatar-placeholder {
+  font-size: 16px;
+  color: var(--color-text-sub);
+  opacity: 0.5;
+}
+
+.court-position-item__role {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.court-position-item__name {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.court-position-item__grade {
+  font-size: 10px;
+  color: var(--color-text-sub);
+  opacity: 0.7;
+}
+
+.court-position-appoint-btn {
+  margin-top: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.court-position-appoint-btn:hover {
+  background: var(--color-accent);
+  color: var(--color-gold);
+}
+
+/* ===== 大臣详情动作按钮 ===== */
+.minister-detail-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.minister-detail-appoint-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.minister-detail-appoint-btn:hover {
+  background: var(--color-accent);
+  color: var(--color-gold);
 }

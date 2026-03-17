@@ -8,6 +8,7 @@ import { requestMinisterReply } from "../api/ministerChat.js";
 let currentMinisterChatId = null;
 let tagsConfigCache = null;
 let factionsCache = null;
+let positionsCache = null;
 const sendingFlags = {};
 
 function createAvatarImg(name, fallbackChar) {
@@ -85,11 +86,150 @@ function showMinisterDetail(minister, state, tagsConfig) {
   body.appendChild(loyaltyBlock);
   body.appendChild(attitudeBlock);
 
+  const actionButtons = document.createElement("div");
+  actionButtons.className = "minister-detail-actions";
+  
+  const appointBtn = document.createElement("button");
+  appointBtn.type = "button";
+  appointBtn.className = "minister-detail-appoint-btn";
+  appointBtn.textContent = "调整官职";
+  appointBtn.addEventListener("click", () => {
+    overlay.remove();
+    showPositionSelectDialog(minister, state);
+  });
+  actionButtons.appendChild(appointBtn);
+  
+  body.appendChild(actionButtons);
+
   card.appendChild(header);
   card.appendChild(avatar);
   card.appendChild(nameEl);
   card.appendChild(roleEl);
   card.appendChild(body);
+  overlay.appendChild(card);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  app.appendChild(overlay);
+}
+
+async function showPositionSelectDialog(minister, state) {
+  const app = document.getElementById("app");
+  if (!app) return;
+
+  if (!positionsCache) {
+    try {
+      positionsCache = await loadJSON("data/positions.json");
+    } catch (e) {
+      positionsCache = { positions: [], departments: [] };
+    }
+  }
+
+  const positions = positionsCache?.positions || [];
+  
+  let overlay = document.getElementById("position-select-overlay");
+  if (overlay) overlay.remove();
+  overlay = document.createElement("div");
+  overlay.id = "position-select-overlay";
+  overlay.className = "appointment-dialog-overlay";
+
+  const card = document.createElement("div");
+  card.className = "appointment-dialog-card";
+
+  const header = document.createElement("div");
+  header.className = "appointment-dialog-card__header";
+  const title = document.createElement("div");
+  title.className = "appointment-dialog-card__title";
+  title.textContent = `为 ${minister.name} 调整官职`;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "appointment-dialog-card__close";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const positionList = document.createElement("div");
+  positionList.className = "appointment-character-list";
+  positionList.style.maxHeight = "300px";
+
+  positions.forEach(pos => {
+    const item = document.createElement("div");
+    item.className = "appointment-character-item";
+    
+    const info = document.createElement("div");
+    info.className = "appointment-character-info";
+    
+    const nameEl = document.createElement("div");
+    nameEl.className = "appointment-character-name";
+    nameEl.textContent = pos.name;
+    
+    const metaEl = document.createElement("div");
+    metaEl.className = "appointment-character-meta";
+    metaEl.textContent = `${pos.grade || ''} · ${pos.description || ''}`;
+
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+    item.appendChild(info);
+
+    item.addEventListener("click", async () => {
+      try {
+        const s = getState();
+        const currentAppointments = s.appointments || {};
+        const newAppointments = { ...currentAppointments };
+        
+        for (const [posId, charId] of Object.entries(newAppointments)) {
+          if (charId === minister.id) {
+            delete newAppointments[posId];
+          }
+        }
+        
+        newAppointments[pos.id] = minister.id;
+        
+        const response = await fetch("/api/chongzhen/appoint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ positionId: pos.id, characterId: minister.id })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          setState({ appointments: newAppointments });
+          overlay.remove();
+          const container = document.getElementById("view-container");
+          if (container) {
+            container.innerHTML = "";
+            renderCourtView(container);
+          }
+        } else {
+          alert(`任命失败: ${result.error || "未知错误"}`);
+        }
+      } catch (e) {
+        alert(`任命失败: ${e.message}`);
+      }
+    });
+
+    positionList.appendChild(item);
+  });
+
+  const body = document.createElement("div");
+  body.className = "appointment-dialog-card__body";
+  body.appendChild(positionList);
+
+  const footer = document.createElement("div");
+  footer.className = "appointment-dialog-card__footer";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "appointment-dialog-cancel";
+  cancelBtn.textContent = "取消";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+  footer.appendChild(cancelBtn);
+
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
   overlay.appendChild(card);
 
   overlay.addEventListener("click", (e) => {
@@ -295,82 +435,129 @@ function renderMinisterList(container, state, tagsConfig) {
   container.appendChild(list);
 }
 
-function renderPositionMap(container, state) {
-  const ministers = state.ministers || [];
-  if (!ministers.length) return;
+async function renderPositionMap(container, state) {
+  if (!positionsCache) {
+    try {
+      positionsCache = await loadJSON("data/positions.json");
+    } catch (e) {
+      positionsCache = { positions: [], departments: [] };
+    }
+  }
+
+  const positions = positionsCache?.positions || [];
+  const departments = positionsCache?.departments || [];
+  const currentAppointments = getState().appointments || {};
+  const appointments = currentAppointments;
+  const charactersData = await loadJSON("data/characters.json");
+  const characters = charactersData?.characters || [];
+  const characterMap = new Map(characters.map(c => [c.id, c]));
 
   const card = document.createElement("div");
   card.className = "edict-block court-position-card";
 
   const header = document.createElement("div");
   header.className = "court-position-header";
-  header.textContent = "内阁与六部职位图";
+  header.innerHTML = `
+    <span>朝廷官职</span>
+    <span class="court-position-count">已任命 ${Object.keys(appointments).length} / ${positions.length}</span>
+  `;
   card.appendChild(header);
 
-  const groups = [
-    {
-      title: "内阁",
-      slots: [
-        { label: "内阁首辅", roleIncludes: "内阁首辅" },
-      ],
-    },
-    {
-      title: "六部",
-      slots: [
-        { label: "吏部", roleIncludes: "吏部" },
-        { label: "户部", roleIncludes: "户部" },
-        { label: "礼部", roleIncludes: "礼部" },
-        { label: "兵部", roleIncludes: "兵部", preferredRole: "兵部尚书" },
-        { label: "刑部", roleIncludes: "刑部" },
-        { label: "工部", roleIncludes: "工部" },
-      ],
-    },
-  ];
+  const deptMap = new Map(departments.map(d => [d.id, d]));
 
-  groups.forEach((group) => {
+  const groupedPositions = new Map();
+  positions.forEach(pos => {
+    const deptId = pos.department || 'other';
+    if (!groupedPositions.has(deptId)) {
+      groupedPositions.set(deptId, []);
+    }
+    groupedPositions.get(deptId).push(pos);
+  });
+
+  const deptOrder = ['neige', 'libu', 'hubu', 'libu_li', 'bingbu', 'xingbu', 'gongbu', 'dutcheng', 'dali_si', 'tongzheng_si', 'shuntian_fu', 'local', 'military', 'neiting', 'other'];
+
+  deptOrder.forEach(deptId => {
+    const posList = groupedPositions.get(deptId);
+    if (!posList || posList.length === 0) return;
+
+    const dept = deptMap.get(deptId) || { name: deptId, color: '#666' };
+
     const groupTitle = document.createElement("div");
     groupTitle.className = "court-position-group-title";
-    groupTitle.textContent = group.title;
+    groupTitle.style.borderLeftColor = dept.color || '#666';
+    groupTitle.textContent = dept.name || deptId;
     card.appendChild(groupTitle);
 
     const grid = document.createElement("div");
     grid.className = "court-position-grid";
 
-    group.slots.forEach((slot) => {
-      let holder = null;
-      if (slot.preferredRole) {
-        holder = ministers.find((m) => m.role && m.role.indexOf(slot.preferredRole) !== -1);
-      }
-      if (!holder) {
-        holder = ministers.find((m) => m.role && m.role.indexOf(slot.roleIncludes) !== -1);
-      }
+    posList.forEach((pos) => {
+      const holderId = appointments[pos.id];
+      const holder = holderId ? characterMap.get(holderId) : null;
+      const isVacant = !holder;
 
       const item = document.createElement("div");
-      item.className = "court-position-item" + (holder ? "" : " court-position-item--empty");
+      item.className = "court-position-item" + (isVacant ? " court-position-item--vacant" : "");
 
       const avatarWrap = document.createElement("div");
       avatarWrap.className = "court-position-avatar";
       if (holder) {
-        avatarWrap.appendChild(
-          createAvatarImg(holder.name, holder.name ? holder.name.charAt(0) : "臣")
-        );
+        avatarWrap.appendChild(createAvatarImg(holder.name, holder.name?.charAt(0) || "臣"));
+      } else {
+        const placeholder = document.createElement("div");
+        placeholder.className = "court-position-avatar-placeholder";
+        placeholder.textContent = "虚";
+        avatarWrap.appendChild(placeholder);
       }
 
       const textWrap = document.createElement("div");
 
       const roleEl = document.createElement("div");
       roleEl.className = "court-position-item__role";
-      roleEl.textContent = slot.label;
+      roleEl.textContent = pos.name;
 
       const nameEl = document.createElement("div");
       nameEl.className = "court-position-item__name";
-      nameEl.textContent = holder ? `${holder.name}（${holder.role}）` : "虚席以待";
+      if (holder) {
+        nameEl.textContent = holder.name;
+      } else {
+        nameEl.textContent = "待任命";
+        nameEl.style.color = "var(--color-text-sub)";
+      }
+
+      const gradeEl = document.createElement("div");
+      gradeEl.className = "court-position-item__grade";
+      gradeEl.textContent = pos.grade || "";
 
       textWrap.appendChild(roleEl);
       textWrap.appendChild(nameEl);
+      textWrap.appendChild(gradeEl);
+
+      if (isVacant) {
+        const appointBtn = document.createElement("button");
+        appointBtn.type = "button";
+        appointBtn.className = "court-position-appoint-btn";
+        appointBtn.textContent = "任命";
+        appointBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showAppointmentDialog(pos, state);
+        });
+        textWrap.appendChild(appointBtn);
+      }
 
       item.appendChild(avatarWrap);
       item.appendChild(textWrap);
+
+      if (holder) {
+        item.addEventListener("click", () => {
+          showMinisterDetail({
+            ...holder,
+            role: pos.name,
+            id: holder.id
+          }, state, tagsConfigCache);
+        });
+      }
+
       grid.appendChild(item);
     });
 
@@ -544,6 +731,197 @@ function getAutoReplies(minister, playerText) {
   return responses[minister.id] || "臣领旨，定当尽心竭力。";
 }
 
+function showAppointmentDialog(position, state) {
+  showAppointmentDialogAsync(position, state);
+}
+
+async function showAppointmentDialogAsync(position, state) {
+  const app = document.getElementById("app");
+  if (!app) return;
+
+  const charactersData = await loadJSON("data/characters.json");
+  const allCharacters = charactersData?.characters || [];
+  
+  const excludedIds = new Set([
+    'chongzhendi', 'zhouhuanghou', 'yuanfei', 'tianfei',
+    'duoergun', 'duoduo', 'haoge', 'aji', 'huangtaiji', 'daishan', 'jierhalang', 'fanwencheng',
+    'lizicheng', 'zhangxianzhong', 'gaoyingxiang', 'luorucai', 'liuzongmin',
+    'liyan', 'niujinxing', 'songxiance',
+    'lidingguo', 'sunkewang', 'liuwenxiu', 'ainengqi'
+  ]);
+  
+  const excludedFactions = new Set(['rebel', 'qing']);
+  
+  const aliveCharacters = allCharacters.filter(c => 
+    c.isAlive !== false && 
+    !excludedIds.has(c.id) && 
+    !excludedFactions.has(c.faction)
+  );
+  const appointedIds = new Set(Object.values(state.appointments || {}));
+  const availableCharacters = aliveCharacters.filter(c => !appointedIds.has(c.id));
+
+  let overlay = document.getElementById("appointment-dialog-overlay");
+  if (overlay) overlay.remove();
+  overlay = document.createElement("div");
+  overlay.id = "appointment-dialog-overlay";
+  overlay.className = "appointment-dialog-overlay";
+
+  const card = document.createElement("div");
+  card.className = "appointment-dialog-card";
+
+  const header = document.createElement("div");
+  header.className = "appointment-dialog-card__header";
+  const title = document.createElement("div");
+  title.className = "appointment-dialog-card__title";
+  title.textContent = `任命 ${position.name}`;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "appointment-dialog-card__close";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const positionInfo = document.createElement("div");
+  positionInfo.className = "appointment-dialog-position-info";
+  positionInfo.innerHTML = `
+    <div class="position-info-item"><span>品级:</span> ${position.grade || '未设置'}</div>
+    <div class="position-info-item"><span>职责:</span> ${position.description || '无'}</div>
+  `;
+
+  const searchInput = document.createElement("input");
+  searchInput.type = "text";
+  searchInput.className = "appointment-search-input";
+  searchInput.placeholder = "搜索角色姓名或字号...";
+
+  const characterList = document.createElement("div");
+  characterList.className = "appointment-character-list";
+
+  const renderCharacters = (filter = "") => {
+    characterList.innerHTML = "";
+    const filtered = filter 
+      ? availableCharacters.filter(c => c.name.includes(filter) || (c.courtesyName && c.courtesyName.includes(filter)))
+      : availableCharacters;
+
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "appointment-empty";
+      empty.textContent = filter ? "未找到匹配的角色" : "暂无可用角色";
+      characterList.appendChild(empty);
+      return;
+    }
+
+    filtered.slice(0, 30).forEach(char => {
+      const item = document.createElement("div");
+      item.className = "appointment-character-item";
+      
+      const avatar = document.createElement("div");
+      avatar.className = "appointment-character-avatar";
+      avatar.appendChild(createAvatarImg(char.name, char.name?.charAt(0) || "?"));
+
+      const info = document.createElement("div");
+      info.className = "appointment-character-info";
+      
+      const nameEl = document.createElement("div");
+      nameEl.className = "appointment-character-name";
+      nameEl.textContent = char.name;
+      
+      const metaEl = document.createElement("div");
+      metaEl.className = "appointment-character-meta";
+      const metaParts = [];
+      if (char.courtesyName) metaParts.push(`字${char.courtesyName}`);
+      if (char.factionLabel) metaParts.push(char.factionLabel);
+      if (char.birthYear) metaParts.push(`${char.birthYear}年生`);
+      metaEl.textContent = metaParts.join(" · ");
+
+      const loyaltyEl = document.createElement("div");
+      loyaltyEl.className = "appointment-character-loyalty";
+      const stateLoyalty = state.loyalty || {};
+      const loyaltyValue = stateLoyalty[char.id] !== undefined ? stateLoyalty[char.id] : (char.loyalty || 30);
+      loyaltyEl.textContent = `忠诚: ${loyaltyValue}`;
+
+      info.appendChild(nameEl);
+      info.appendChild(metaEl);
+      info.appendChild(loyaltyEl);
+
+      item.appendChild(avatar);
+      item.appendChild(info);
+
+      item.addEventListener("click", async () => {
+        try {
+          const s = getState();
+          const currentAppointments = s.appointments || {};
+          
+          const newAppointments = { ...currentAppointments };
+          
+          for (const [posId, charId] of Object.entries(newAppointments)) {
+            if (charId === char.id) {
+              delete newAppointments[posId];
+            }
+          }
+          
+          newAppointments[position.id] = char.id;
+          
+          const response = await fetch("/api/chongzhen/appoint", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ positionId: position.id, characterId: char.id })
+          });
+          const result = await response.json();
+          
+          if (result.success) {
+            setState({ appointments: newAppointments });
+            overlay.remove();
+            const container = document.getElementById("view-container");
+            if (container) {
+              container.innerHTML = "";
+              renderCourtView(container);
+            }
+          } else {
+            alert(`任命失败: ${result.error || "未知错误"}`);
+          }
+        } catch (e) {
+          alert(`任命失败: ${e.message}`);
+        }
+      });
+
+      characterList.appendChild(item);
+    });
+  };
+
+  searchInput.addEventListener("input", (e) => {
+    renderCharacters(e.target.value);
+  });
+
+  const body = document.createElement("div");
+  body.className = "appointment-dialog-card__body";
+  body.appendChild(positionInfo);
+  body.appendChild(searchInput);
+  body.appendChild(characterList);
+
+  const footer = document.createElement("div");
+  footer.className = "appointment-dialog-card__footer";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "appointment-dialog-cancel";
+  cancelBtn.textContent = "取消";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+  footer.appendChild(cancelBtn);
+
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  overlay.appendChild(card);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  app.appendChild(overlay);
+  renderCharacters();
+  searchInput.focus();
+}
+
 async function renderCourtView(container) {
   const state = getState();
   if (!tagsConfigCache) {
@@ -559,23 +937,21 @@ async function renderCourtView(container) {
 
   container.innerHTML = "";
 
-  const { ministers } = state;
-  if (!ministers || ministers.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "edict-block";
-    empty.textContent = "朝堂尚无臣子信息。";
-    container.appendChild(empty);
-    return;
-  }
-
   if (!currentMinisterChatId) {
-    renderPositionMap(container, state);
-    renderMinisterList(container, state, tagsConfigCache);
+    await renderPositionMap(container, state);
+    const { ministers } = state;
+    if (ministers && ministers.length > 0) {
+      renderMinisterList(container, state, tagsConfigCache);
+    }
   } else {
-    const minister = ministers.find((m) => m.id === currentMinisterChatId);
+    const { ministers } = state;
+    const minister = ministers?.find((m) => m.id === currentMinisterChatId);
     if (!minister) {
       currentMinisterChatId = null;
-      renderMinisterList(container, state, tagsConfigCache);
+      await renderPositionMap(container, state);
+      if (ministers && ministers.length > 0) {
+        renderMinisterList(container, state, tagsConfigCache);
+      }
       return;
     }
     ensureConversation(minister);

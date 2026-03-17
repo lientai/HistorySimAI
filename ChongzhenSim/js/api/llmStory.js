@@ -11,6 +11,8 @@ export async function requestStoryTurn(state, lastChoice) {
       currentMonth: state.currentMonth,
       currentYear: state.currentYear,
       nation: state.nation || {},
+      appointments: state.appointments || {},
+      characterStatus: state.characterStatus || {},
     },
   };
   if (lastChoice) {
@@ -34,12 +36,14 @@ export async function requestStoryTurn(state, lastChoice) {
   }
 
   const raw = await res.text();
+  console.log("[requestStoryTurn] Raw LLM response:", raw);
   if (!res.ok) {
     console.error("requestStoryTurn non-ok", res.status, raw);
     return null;
   }
 
   const parsed = parseLLMContent(raw);
+  console.log("[requestStoryTurn] LLM response parsed:", JSON.stringify(parsed, null, 2));
   if (!parsed || !parsed.storyParagraphs || !Array.isArray(parsed.choices) || parsed.choices.length < 3) {
     console.error("requestStoryTurn invalid shape", parsed);
     return null;

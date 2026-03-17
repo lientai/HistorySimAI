@@ -74,23 +74,51 @@ function applyEffects(effects) {
     }
     setState({ loyalty });
   }
-}
 
-function cleanupDanmuLayer(container) {
-  if (container._edictDanmuLayer) {
-    stopDanmu(container._edictDanmuLayer);
-    container._edictDanmuLayer.remove();
-    container._edictDanmuLayer = null;
+  if (effects.appointments && typeof effects.appointments === "object") {
+    const currentState = getState();
+    const appointments = { ...(currentState.appointments || {}) };
+    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+      if (typeof positionId !== "string" || typeof characterId !== "string") continue;
+      for (const [posId, charId] of Object.entries(appointments)) {
+        if (charId === characterId && posId !== positionId) {
+          delete appointments[posId];
+        }
+      }
+      appointments[positionId] = characterId;
+    }
+    setState({ appointments });
+  }
+
+  if (effects.characterDeath && typeof effects.characterDeath === "object") {
+    const currentState = getState();
+    const characterStatus = { ...(currentState.characterStatus || {}) };
+    for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
+      if (typeof characterId !== "string") continue;
+      characterStatus[characterId] = {
+        isAlive: false,
+        deathReason: typeof reason === "string" ? reason : "处死",
+        deathDay: currentState.currentDay || 1
+      };
+    }
+    const appointments = { ...(currentState.appointments || {}) };
+    for (const characterId of Object.keys(effects.characterDeath)) {
+      for (const [posId, charId] of Object.entries(appointments)) {
+        if (charId === characterId) {
+          delete appointments[posId];
+        }
+      }
+    }
+    setState({ characterStatus, appointments });
   }
 }
 
 function setupDanmuLayer(container) {
-  cleanupDanmuLayer(container);
-  const danmuLayer = document.createElement("div");
-  danmuLayer.className = "edict-danmu-layer";
-  container.insertBefore(danmuLayer, container.firstChild);
-  container._edictDanmuLayer = danmuLayer;
-  return danmuLayer;
+  if (container._edictDanmuLayer) return;
+  const layer = document.createElement("div");
+  layer.className = "edict-danmu-layer";
+  container.insertBefore(layer, container.firstChild);
+  container._edictDanmuLayer = layer;
 }
 
 function startDanmu(container) {
@@ -99,7 +127,7 @@ function startDanmu(container) {
   }
 }
 
-function renderStoryHistory(container, history, phaseLabels, state, renderId) {
+async function renderStoryHistory(container, history, phaseLabels, state, renderId) {
   for (const entry of history) {
     if (renderId != null && container._storyRenderId !== renderId) return false;
     
@@ -120,7 +148,10 @@ function renderStoryHistory(container, history, phaseLabels, state, renderId) {
     
     if (entry.chosenChoice && entry.chosenChoice.text) {
       renderChosenChoice(container, entry.chosenChoice);
-      renderDeltaCard(container, entry.effects, state);
+      if (entry.effects) {
+        applyEffects(entry.effects);
+      }
+      await renderDeltaCard(container, entry.effects, state);
     }
   }
   return true;
@@ -136,7 +167,9 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     return storyCache.data;
   }
 
-  const useLLM = config.storyMode === "llm" && (config.apiBase || "").trim().length > 0;
+  const apiBase = (config.apiBase || "").trim();
+  const isCustomEdict = state.lastChoiceId === "custom_edict";
+  const useLLM = (config.storyMode === "llm" || isCustomEdict) && apiBase.length > 0;
   let data = null;
 
   if (useLLM) {
@@ -151,15 +184,13 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     if (renderId != null && container._storyRenderId !== renderId) return null;
   }
 
-  if (data == null) {
+  if (!data) {
     try {
       data = await loadJSON(path);
     } catch (e) {
-      if (renderId != null && container._storyRenderId !== renderId) return null;
-      
-      const errorMessage = useLLM 
-        ? "本回合剧情生成失败，请检查网络或后端配置。"
-        : "本回合剧情尚未准备好，请稍后再试。";
+      const errorMessage = config.storyMode === "llm" && apiBase.length > 0
+        ? "LLM 生成失败，已切换到本地模板。本地模板不适用于自拟诏书场景。"
+        : "剧情文件加载失败";
       
       renderStoryError(container, errorMessage, () => {
         storyCache = { key: null, data: null };
@@ -187,42 +218,45 @@ function updateStoryState(data) {
 }
 
 function renderCurrentTurn(container, data, state, phaseLabels, onChoice) {
-  const phaseKey = state.currentPhase || "morning";
-  const currentPhaseLabel = phaseLabels[phaseKey] || phaseKey;
-  
-  const currentLabel = document.createElement("div");
-  currentLabel.className = "story-history-label story-current-label";
-  currentLabel.textContent = `当前 · 第${state.currentDay}天 · ${currentPhaseLabel}`;
-  container.appendChild(currentLabel);
-  
-  const currentWrap = document.createElement("div");
-  currentWrap.className = "edict-current-wrap";
-  container.appendChild(currentWrap);
-  
-  const textBlock = document.createElement("div");
-  textBlock.className = "edict-block";
-  const fullText = buildBlockText(data);
-  renderPseudoLines(textBlock, fullText, state);
-  currentWrap.appendChild(textBlock);
-  
+  const header = data.header || {};
+  const phase = state.currentPhase || "morning";
+  const phaseLabel = phaseLabels[phase] || phase;
+
+  const headerEl = document.createElement("div");
+  headerEl.className = "story-header";
+  headerEl.innerHTML = `
+    <span class="story-header__time">${header.time || ""}</span>
+    <span class="story-header__info">${header.season || ""} · ${header.weather || ""} · ${header.location || ""}</span>
+  `;
+  container.appendChild(headerEl);
+
+  const block = document.createElement("div");
+  block.className = "edict-block story-current-block";
+  const storyText = Array.isArray(data.storyParagraphs) ? data.storyParagraphs.join("\n") : data.storyParagraphs || "";
+  renderPseudoLines(block, storyText, state);
+  container.appendChild(block);
+
   const actionsWrap = document.createElement("div");
-  actionsWrap.className = "story-actions";
-  
-  (data.choices || []).forEach((choice) => {
+  actionsWrap.className = "story-choices";
+
+  const choices = data.choices || [];
+  const validChoices = choices.slice(0, 3);
+
+  validChoices.forEach(choice => {
     const btn = createChoiceButton(choice, onChoice);
     actionsWrap.appendChild(btn);
   });
-  
+
   const customBtn = document.createElement("button");
   customBtn.type = "button";
   customBtn.className = "story-action-btn story-action-btn--custom";
-  customBtn.innerHTML = `<div>自拟诏书</div><span>亲笔拟定旨意，由朝臣代为施行</span>`;
+  customBtn.innerHTML = `<div>✍️ 自拟诏书</div><span>自定义圣旨内容</span>`;
   customBtn.addEventListener("click", () => {
     showCustomEdictPanel(onChoice);
   });
   actionsWrap.appendChild(customBtn);
   
-  currentWrap.appendChild(actionsWrap);
+  container.appendChild(actionsWrap);
 }
 
 export async function renderStoryTurn(state, container, onChoice, options = {}) {
@@ -233,14 +267,15 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
 
   const config = state.config || {};
   const phaseLabels = config.phaseLabels || { morning: "早朝", afternoon: "午后", evening: "夜间" };
-  const history = state.storyHistory || [];
+  const currentState = getState();
+  const history = currentState.storyHistory || [];
   
-  if (!renderStoryHistory(container, history, phaseLabels, state, renderId)) return;
+  if (!await renderStoryHistory(container, history, phaseLabels, currentState, renderId)) return;
 
-  const data = await loadStoryData(state, container, renderId, onChoice, options);
+  const data = await loadStoryData(currentState, container, renderId, onChoice, options);
   if (data == null) return;
 
-  if (data.lastChoiceEffects && state.lastChoiceId === "custom_edict") {
+  if (data.lastChoiceEffects && currentState.lastChoiceId === "custom_edict") {
     const lastEntry = history[history.length - 1];
     if (lastEntry && lastEntry.chosenChoice && !lastEntry.effects) {
       lastEntry.effects = data.lastChoiceEffects;
@@ -250,7 +285,7 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
       setState({ storyHistory: updatedHistory });
       
       const historyContainer = container.querySelector('.story-history-container') || container;
-      renderDeltaCard(historyContainer, data.lastChoiceEffects, state);
+      await renderDeltaCard(historyContainer, data.lastChoiceEffects, getState());
     }
   }
 
@@ -258,7 +293,7 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
 
   if (renderId != null && container._storyRenderId !== renderId) return;
 
-  renderCurrentTurn(container, data, state, phaseLabels, onChoice);
+  renderCurrentTurn(container, data, currentState, phaseLabels, onChoice);
 
   startDanmu(container);
 }

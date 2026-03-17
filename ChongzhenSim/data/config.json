@@ -3,7 +3,7 @@
   "gameTitle": "崇祯皇帝模拟器",
   "startYear": 3,
   "startMonth": 4,
-  "storyMode": "llm",
+  "storyMode": "template",
   "apiBase": "http://localhost:3002",
   "phases": ["morning", "afternoon", "evening"],
   "phaseLabels": {

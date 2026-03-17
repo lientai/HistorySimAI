@@ -1,6 +1,9 @@
 import { buildSpeakerMap, buildMinisterNameToInfo, highlightMinisterNames, buildBlockText } from "../utils/storyParser.js";
+import { loadJSON } from "../dataLoader.js";
 
-export function renderDeltaCard(container, effects, state) {
+let positionsCache = null;
+
+export async function renderDeltaCard(container, effects, state) {
   if (!effects) return;
   const entries = [];
   const labels = {
@@ -22,23 +25,49 @@ export function renderDeltaCard(container, effects, state) {
       }
     }
   }
+  if (effects.appointments && typeof effects.appointments === "object") {
+    if (!positionsCache) {
+      try {
+        positionsCache = await loadJSON("data/positions.json");
+      } catch (e) {
+        positionsCache = { positions: [] };
+      }
+    }
+    const positions = positionsCache?.positions || [];
+    const positionMap = Object.fromEntries(positions.map((p) => [p.id, p.name]));
+    const ministers = state.ministers || [];
+    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+      const posName = positionMap[positionId] || positionId;
+      const charName = nameById[characterId] || characterId;
+      entries.push({ label: `任命 ${charName} 为 ${posName}`, delta: null, isAppointment: true });
+    }
+  }
   if (entries.length === 0) return;
 
   const card = document.createElement("div");
   card.className = "story-delta-card";
-  entries.forEach(({ label, delta, invertColor }) => {
+  entries.forEach(({ label, delta, invertColor, isAppointment }) => {
     const row = document.createElement("div");
     row.className = "story-delta-row";
     const lbl = document.createElement("span");
     lbl.className = "story-delta-label";
     lbl.textContent = label;
-    const val = document.createElement("span");
-    const isPositive = invertColor ? delta < 0 : delta > 0;
-    val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
-    const sign = delta > 0 ? "+" : "";
-    val.textContent = sign + delta.toLocaleString();
-    row.appendChild(lbl);
-    row.appendChild(val);
+    if (isAppointment) {
+      const val = document.createElement("span");
+      val.className = "story-delta-value story-delta-value--appointment";
+      val.textContent = "✓";
+      row.appendChild(lbl);
+      row.appendChild(val);
+    } else {
+      const val = document.createElement("span");
+      const isPositive = invertColor ? delta < 0 : delta > 0;
+      val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
+      const sign = delta > 0 ? "+" : "";
+      val.textContent = sign + delta.toLocaleString();
+      row.appendChild(lbl);
+      row.appendChild(val);
+    }
     card.appendChild(row);
   });
   container.appendChild(card);
