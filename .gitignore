@@ -10,6 +10,9 @@ build/
 .env.local
 .env.*.local
 
+# Sensitive config (contains API keys)
+ChongzhenSim/server/config.json
+
 # IDE
 .vscode/
 .idea/
