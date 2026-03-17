@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "nexus-mapper": {
+      "source": "haaaiawd/nexus-skills",
+      "sourceType": "github",
+      "computedHash": "8b1a1fd7c4653aae9224f6c223eb82a9b332d0606ea9d5856fd3630cea977db0"
+    }
+  }
+}

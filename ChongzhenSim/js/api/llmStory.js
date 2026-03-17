@@ -49,6 +49,7 @@ export async function requestStoryTurn(state, lastChoice) {
     header: parsed.header || {},
     storyParagraphs: parsed.storyParagraphs,
     choices: parsed.choices.slice(0, 3),
+    lastChoiceEffects: parsed.lastChoiceEffects || null,
     news: Array.isArray(parsed.news) ? parsed.news : [],
     publicOpinion: Array.isArray(parsed.publicOpinion) ? parsed.publicOpinion : [],
   };
