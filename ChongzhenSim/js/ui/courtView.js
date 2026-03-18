@@ -869,12 +869,22 @@ async function renderPositionMap(container, state) {
     if (!posList || posList.length === 0) return;
 
     const dept = deptMap.get(deptId) || { name: deptId, color: '#666' };
+    const vacantCount = posList.filter((p) => !appointments[p.id]).length;
+
+    const section = document.createElement("section");
+    section.className = "court-dept-section";
+    section.style.setProperty("--court-dept-accent", dept.color || "#666");
 
     const groupTitle = document.createElement("div");
     groupTitle.className = "court-position-group-title";
-    groupTitle.style.borderLeftColor = dept.color || '#666';
-    groupTitle.textContent = dept.name || deptId;
-    card.appendChild(groupTitle);
+    groupTitle.innerHTML = `
+      <div class="court-position-group-title__main">
+        <span class="court-position-group-title__name">${dept.name || deptId}</span>
+        <span class="court-position-group-title__badge">空缺 ${vacantCount}</span>
+      </div>
+      <div class="court-position-group-title__desc">${dept.description || "掌本部政务"}</div>
+    `;
+    section.appendChild(groupTitle);
 
     const grid = document.createElement("div");
     grid.className = "court-position-grid";
@@ -959,12 +969,14 @@ async function renderPositionMap(container, state) {
       grid.appendChild(item);
     });
 
-    card.appendChild(grid);
+    section.appendChild(grid);
 
     if (appointUIState.mode && activePanelDeptId === deptId) {
       renderInlinePanel(deptId);
-      card.appendChild(inlinePanel);
+      section.appendChild(inlinePanel);
     }
+
+    card.appendChild(section);
   });
 
   container.appendChild(card);

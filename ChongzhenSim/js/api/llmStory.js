@@ -35,10 +35,11 @@ export async function requestStoryTurn(state, lastChoice) {
   const phaseLabel = phaseKey === "morning" ? "早朝" : phaseKey === "afternoon" ? "午后" : "夜间";
   const expectedTime = `崇祯${state.currentYear || 1}年${state.currentMonth || 1}月 ${phaseLabel}`;
   const expectedSeason = getSeasonByMonth(state.currentMonth || 1);
+  const expectedWeather = getSeasonalWeatherByState(state, expectedSeason);
   const header = { ...(normalized.header || {}) };
   header.time = expectedTime;
   header.season = header.season || expectedSeason;
-  header.weather = header.weather || state.weather || "未记载";
+  header.weather = header.weather || expectedWeather;
 
   return {
     header,
@@ -56,6 +57,23 @@ function getSeasonByMonth(month) {
   if (m >= 6 && m <= 8) return "夏";
   if (m >= 9 && m <= 11) return "秋";
   return "冬";
+}
+
+function getSeasonalWeatherByState(state, season) {
+  const weatherPool = {
+    "春": ["春雨", "微风", "晴暖", "薄雾", "和风"],
+    "夏": ["炎热", "骤雨", "闷热", "雷雨", "晴朗"],
+    "秋": ["秋高气爽", "凉风", "阴凉", "微雨", "清朗"],
+    "冬": ["寒风", "阴冷", "小雪", "霜寒", "晴冷"],
+  };
+  const list = weatherPool[season] || ["平稳"];
+  const year = Number(state.currentYear) || 1;
+  const month = Number(state.currentMonth) || 1;
+  const day = Number(state.currentDay) || 1;
+  const phase = String(state.currentPhase || "morning");
+  const phaseSeed = phase === "morning" ? 1 : phase === "afternoon" ? 2 : 3;
+  const idx = Math.abs((year * 97 + month * 31 + day * 13 + phaseSeed * 7) % list.length);
+  return list[idx] || list[0];
 }
 
 function normalizeAppointmentsMap(raw) {

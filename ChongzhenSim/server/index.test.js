@@ -230,6 +230,27 @@ describe('buildUserMessage', () => {
     expect(message).toContain('毕自严');
   });
 
+  it('should include implemented policies context for reasoning', () => {
+    const { buildUserMessage } = createTestApp();
+    const body = {
+      state: {
+        currentDay: 2,
+        currentYear: 3,
+        currentMonth: 4,
+        currentPhase: 'morning',
+        weather: '晴',
+        nation: { treasury: 500000, grain: 30000 }
+      },
+      unlockedPolicies: ['civil_tax_reform', 'military_border_fort'],
+      customPolicies: [{ id: 'cp_1', name: '赈济先行' }],
+    };
+    const message = buildUserMessage(body);
+    expect(message).toContain('已实施国策');
+    expect(message).toContain('civil_tax_reform');
+    expect(message).toContain('赈济先行');
+    expect(message).toContain('纳入全局推理');
+  });
+
   it('should format treasury status correctly', () => {
     const { buildUserMessage } = createTestApp();
     const testCases = [

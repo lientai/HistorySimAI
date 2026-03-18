@@ -4,6 +4,95 @@ import { autoSaveIfEnabled } from "../storage.js";
 import { updateTopbarByState } from "../layout.js";
 import { applyProgressionToChoiceEffects, extractCustomPoliciesFromEdict, mergeCustomPolicies, processCoreGameplayTurn, refreshQuarterAgendaByState, resolveHostileForcesAfterChoice, scaleEffectsByExecution } from "./coreGameplaySystem.js";
 import { sanitizeStoryEffects } from "../api/validators.js";
+import { loadJSON } from "../dataLoader.js";
+
+let positionsMetaCache = null;
+
+async function getPositionsMeta() {
+  if (positionsMetaCache) return positionsMetaCache;
+  try {
+    positionsMetaCache = await loadJSON("data/positions.json");
+  } catch (_e) {
+    positionsMetaCache = { positions: [], departments: [] };
+  }
+  return positionsMetaCache;
+}
+
+function isAliveCharacter(state, id) {
+  return state.characterStatus?.[id]?.isAlive !== false;
+}
+
+async function autoFillVacantCourtPositionsQuarterly() {
+  const state = getState();
+  const meta = await getPositionsMeta();
+  const positions = Array.isArray(meta?.positions) ? meta.positions : [];
+  if (!positions.length) return;
+
+  const appointments = { ...(state.appointments || {}) };
+  const occupied = new Set(Object.values(appointments).filter((id) => typeof id === "string"));
+  const ministers = Array.isArray(state.ministers) ? state.ministers : [];
+  const loyalty = state.loyalty || {};
+
+  const candidates = ministers
+    .filter((m) => m && m.id)
+    .filter((m) => isAliveCharacter(state, m.id))
+    .filter((m) => !occupied.has(m.id))
+    .filter((m) => !["rebel", "qing"].includes(m.faction));
+
+  if (!candidates.length) return;
+
+  const vacancies = positions
+    .filter((p) => p && p.id && !appointments[p.id])
+    .sort((a, b) => {
+      const impA = typeof a.importance === "number" ? a.importance : 0;
+      const impB = typeof b.importance === "number" ? b.importance : 0;
+      if (impB !== impA) return impB - impA;
+      const rankA = typeof a.rank === "number" ? a.rank : 99;
+      const rankB = typeof b.rank === "number" ? b.rank : 99;
+      return rankA - rankB;
+    });
+
+  if (!vacancies.length) return;
+
+  const used = new Set(occupied);
+  const assignments = [];
+
+  vacancies.forEach((pos) => {
+    const available = candidates
+      .filter((m) => !used.has(m.id))
+      .sort((a, b) => {
+        const la = typeof loyalty[a.id] === "number" ? loyalty[a.id] : 0;
+        const lb = typeof loyalty[b.id] === "number" ? loyalty[b.id] : 0;
+        if (lb !== la) return lb - la;
+        const an = String(a.name || a.id);
+        const bn = String(b.name || b.id);
+        return an.localeCompare(bn, "zh-CN");
+      });
+
+    const picked = available[0];
+    if (!picked) return;
+    used.add(picked.id);
+    appointments[pos.id] = picked.id;
+    assignments.push({ positionName: pos.name || pos.id, ministerName: picked.name || picked.id, ministerId: picked.id });
+  });
+
+  if (!assignments.length) return;
+
+  const assignmentSummary = assignments.slice(0, 5).map((a) => `${a.positionName}→${a.ministerName}`).join("，");
+
+  setState({
+    appointments,
+    systemNewsToday: [
+      ...(state.systemNewsToday || []),
+      {
+        title: "内阁核定补官",
+        summary: `本季度内阁已完成空缺补官：${assignmentSummary}${assignments.length > 5 ? "等" : ""}。`,
+        tag: "重",
+        icon: "📝",
+      },
+    ],
+  });
+}
 
 export function runCurrentTurn(container, options = {}) {
   const state = getState();
@@ -55,6 +144,7 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
     lastChoiceId: choiceId,
     lastChoiceText: choiceText || "",
     lastChoiceHint: choiceHint || null,
+    currentStoryTurn: null,
   });
 
   // 每一轮代表一个月（按 state.currentMonth/Year 走），并且每12个月增长一年
@@ -115,6 +205,10 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
 
   } else {
     setState({ lastQuarterSettlement: null });
+  }
+
+  if (nextMonth % 3 === 0) {
+    await autoFillVacantCourtPositionsQuarterly();
   }
 
   // 用本回合全部结算后的最新状态重算季度议题，避免议题落后于实时局势

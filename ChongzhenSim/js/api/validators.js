@@ -9,6 +9,13 @@ function asParagraphArray(value) {
   return [];
 }
 
+function stripEnglishParenAfterChinese(text) {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/([\u4e00-\u9fa5]{2,})\s*[（(]\s*[A-Za-z0-9_\-\s]+\s*[）)]/g, "$1")
+    .replace(/([\u4e00-\u9fa5]{2,})\s*[（(]\s*[A-Za-z][A-Za-z0-9_\-\s,:;\.]*\s*[）)]/g, "$1");
+}
+
 const EFFECT_DELTA_LIMITS = {
   treasury: 300000,
   grain: 30000,
@@ -18,6 +25,20 @@ const EFFECT_DELTA_LIMITS = {
   disasterLevel: 12,
   corruptionLevel: 12,
 };
+
+function parseNumberish(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const normalized = value
+    .trim()
+    .replace(/[，,]/g, "")
+    .replace(/[＋+]/g, "+")
+    .replace(/[－-]/g, "-");
+  if (!normalized) return null;
+  if (!/^[-+]?\d+(\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function clampDelta(key, value) {
   const limit = EFFECT_DELTA_LIMITS[key];
@@ -30,16 +51,18 @@ export function sanitizeStoryEffects(effects) {
   const out = { ...effects };
 
   for (const [key, value] of Object.entries(out)) {
-    if (typeof value === "number") {
-      out[key] = clampDelta(key, value);
+    const numeric = parseNumberish(value);
+    if (numeric != null) {
+      out[key] = clampDelta(key, numeric);
     }
   }
 
   if (out.loyalty && typeof out.loyalty === "object" && !Array.isArray(out.loyalty)) {
     const loyalty = {};
     for (const [id, delta] of Object.entries(out.loyalty)) {
-      if (typeof delta !== "number") continue;
-      loyalty[id] = Math.max(-10, Math.min(10, delta));
+      const numeric = parseNumberish(delta);
+      if (numeric == null) continue;
+      loyalty[id] = Math.max(-10, Math.min(10, numeric));
     }
     out.loyalty = loyalty;
   }
@@ -47,8 +70,9 @@ export function sanitizeStoryEffects(effects) {
   if (out.hostileDamage && typeof out.hostileDamage === "object" && !Array.isArray(out.hostileDamage)) {
     const hostileDamage = {};
     for (const [targetId, delta] of Object.entries(out.hostileDamage)) {
-      if (typeof delta !== "number") continue;
-      hostileDamage[targetId] = Math.max(-25, Math.min(25, delta));
+      const numeric = parseNumberish(delta);
+      if (numeric == null) continue;
+      hostileDamage[targetId] = Math.max(-25, Math.min(25, numeric));
     }
     out.hostileDamage = hostileDamage;
   }
@@ -72,8 +96,8 @@ function normalizeChoice(item, index) {
   if (!text) return null;
   return {
     id: String(item.id ?? `choice_${index + 1}`),
-    text,
-    hint: typeof item.hint === "string" ? item.hint : "",
+    text: stripEnglishParenAfterChinese(text),
+    hint: typeof item.hint === "string" ? stripEnglishParenAfterChinese(item.hint) : "",
     effects: sanitizeStoryEffects(item.effects && typeof item.effects === "object" ? item.effects : {}),
   };
 }
@@ -128,7 +152,7 @@ export function normalizeStoryPayload(parsed, state) {
       ?? parsed.story
       ?? parsed.narrative
       ?? parsed.content
-  );
+  ).map((line) => stripEnglishParenAfterChinese(String(line || "")));
   if (!storyParagraphs.length) return null;
 
   const candidateChoices =

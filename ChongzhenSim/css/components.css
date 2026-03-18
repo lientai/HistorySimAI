@@ -702,7 +702,11 @@
 
 .court-position-card {
   margin-bottom: 10px;
-  padding: 10px 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbf7ef 0%, #f5ecdc 100%);
+  border: 1px solid #d9c8a9;
+  box-shadow: 0 6px 16px rgba(82, 52, 25, 0.08);
 }
 
 .court-appoint-inline {
@@ -799,34 +803,99 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--color-heading-main);
-  margin-bottom: 6px;
-  text-align: center;
+  margin-bottom: 10px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed #d9c8a9;
+  padding-bottom: 8px;
+}
+
+.court-position-count {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  font-weight: 600;
+}
+
+.court-dept-section {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--court-dept-accent) 28%, #d8c7a6);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 241, 228, 0.9) 100%);
 }
 
 .court-position-group-title {
-  font-size: 12px;
-  font-weight: 600;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--court-dept-accent) 12%, #fff);
+  border-left: 4px solid var(--court-dept-accent);
+}
+
+.court-position-group-title__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.court-position-group-title__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-heading-main);
+}
+
+.court-position-group-title__badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8f4b2c;
+  background: #fff5e5;
+  border: 1px solid #e8cc98;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.court-position-group-title__desc {
+  margin-top: 4px;
+  font-size: 11px;
   color: var(--color-text-sub);
-  margin: 4px 0 4px;
-  text-align: center;
+  line-height: 1.4;
 }
 
 .court-position-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 
 .court-position-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  text-align: center;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: 8px;
+  text-align: left;
+  padding: 8px;
+  border-radius: 8px;
   border: 1px solid var(--color-border-soft);
-  background-color: var(--color-block-bg);
+  background-color: rgba(255, 255, 255, 0.92);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.court-position-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.court-position-item__grade {
+  font-size: 10px;
+  color: #8a7660;
+  margin-top: 2px;
+}
+
+.court-position-item--vacant {
+  border-style: dashed;
+  background: linear-gradient(180deg, #fffdf7 0%, #f5efe4 100%);
 }
 
 .court-position-avatar {
@@ -837,6 +906,17 @@
   background-color: var(--color-block-bg);
   border: 1px solid var(--color-border-soft);
   flex-shrink: 0;
+}
+
+.court-position-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9e8466;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .court-position-avatar img {
@@ -860,6 +940,17 @@
 
 .court-position-item--empty {
   opacity: 0.6;
+}
+
+.court-position-appoint-btn {
+  margin-top: 6px;
+  border: 1px solid #d8c7a6;
+  background: #fff9ef;
+  color: #7a4b25;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 8px;
 }
 
 .court-relations-btn {

@@ -538,10 +538,28 @@ function buildBlockText(data) {
   return text.trimEnd();
 }
 
+function buildMinisterStorylineTag(characterId, characterName) {
+  const normalizedName = String(characterName || "").replace(/\s+/g, "");
+  const normalizedId = String(characterId || "").replace(/\s+/g, "");
+  return `${normalizedName || normalizedId || "未知臣工"}_线`;
+}
+
+function mergeUniqueStrings(base, extra) {
+  const out = Array.isArray(base) ? [...base] : [];
+  (Array.isArray(extra) ? extra : []).forEach((item) => {
+    if (!item || typeof item !== "string") return;
+    if (!out.includes(item)) out.push(item);
+  });
+  return out;
+}
+
 function applyEffects(effects) {
   if (!effects) return;
   const s = getState();
   const nation = { ...(s.nation || {}) };
+  const ministers = Array.isArray(s.ministers) ? s.ministers : [];
+  const ministerNameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+  const storylineTagsToClose = [];
   
   const PERCENT_KEYS = ["militaryStrength", "civilMorale", "borderThreat", "disasterLevel", "corruptionLevel"];
   
@@ -569,7 +587,8 @@ function applyEffects(effects) {
 
   if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     const currentState = getState();
-    const appointments = { ...(currentState.appointments || {}) };
+    const beforeAppointments = { ...(currentState.appointments || {}) };
+    const appointments = { ...beforeAppointments };
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {
       if (typeof positionId !== "string" || typeof characterId !== "string") continue;
       for (const [posId, charId] of Object.entries(appointments)) {
@@ -579,6 +598,15 @@ function applyEffects(effects) {
       }
       appointments[positionId] = characterId;
     }
+
+    const beforeHolders = new Set(Object.values(beforeAppointments).filter((id) => typeof id === "string"));
+    const afterHolders = new Set(Object.values(appointments).filter((id) => typeof id === "string"));
+    for (const holderId of beforeHolders) {
+      if (!afterHolders.has(holderId)) {
+        storylineTagsToClose.push(buildMinisterStorylineTag(holderId, ministerNameById[holderId]));
+      }
+    }
+
     setState({ appointments });
   }
 
@@ -592,6 +620,7 @@ function applyEffects(effects) {
         deathReason: typeof reason === "string" ? reason : "处死",
         deathDay: currentState.currentMonth || 1,
       };
+      storylineTagsToClose.push(buildMinisterStorylineTag(characterId, ministerNameById[characterId]));
     }
     const appointments = { ...(currentState.appointments || {}) };
     for (const characterId of Object.keys(effects.characterDeath)) {
@@ -603,6 +632,14 @@ function applyEffects(effects) {
     }
     setState({ characterStatus, appointments });
     updateMinisterTabBadge(getState());
+  }
+
+  if (storylineTagsToClose.length) {
+    const latest = getState();
+    const mergedClosed = mergeUniqueStrings(latest.closedStorylines, storylineTagsToClose);
+    if (mergedClosed.length !== (latest.closedStorylines || []).length) {
+      setState({ closedStorylines: mergedClosed });
+    }
   }
 }
 
@@ -879,12 +916,18 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
   const templateFallbackPath = `data/story/day1_${phaseKey}.json`;
   const cacheKey = `${year}_${month}_${phaseKey}`;
   const config = state.config || {};
+  const isFirstTurn = (state.lastChoiceId == null) && (!Array.isArray(state.storyHistory) || state.storyHistory.length === 0);
+
+  if (state.currentStoryTurn && state.currentStoryTurn.key === cacheKey && state.currentStoryTurn.data) {
+    storyCache = { key: cacheKey, data: state.currentStoryTurn.data };
+    return state.currentStoryTurn.data;
+  }
 
   if (storyCache.key === cacheKey && storyCache.data) {
     return storyCache.data;
   }
 
-  const useLLM = config.storyMode === "llm" && (config.apiBase || "").trim().length > 0;
+  const useLLM = !isFirstTurn && config.storyMode === "llm" && (config.apiBase || "").trim().length > 0;
   let data = null;
 
   if (useLLM) {
@@ -912,7 +955,7 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
   if (data == null) {
     try {
       // Template mode uses a curated baseline script by phase to avoid missing-file noise.
-      const templatePath = config.storyMode === "llm" ? path : templateFallbackPath;
+      const templatePath = (config.storyMode === "llm" && !isFirstTurn) ? path : templateFallbackPath;
       data = await loadJSON(templatePath);
     } catch (e) {
       if (renderId != null && container._storyRenderId !== renderId) return null;
@@ -931,6 +974,7 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
   }
 
   storyCache = { key: cacheKey, data };
+  setState({ currentStoryTurn: { key: cacheKey, data } });
   return data;
 }
 

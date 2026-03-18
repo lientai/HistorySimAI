@@ -69,7 +69,7 @@ function createApp(options = {}) {
   }
 
   function buildUserMessage(body) {
-    const { state = {}, lastChoiceId, lastChoiceText, courtChatSummary } = body || {};
+    const { state = {}, lastChoiceId, lastChoiceText, courtChatSummary, unlockedPolicies = [], customPolicies = [] } = body || {};
 
     const day = state.currentDay ?? 1;
     const year = state.currentYear ?? 1;
@@ -108,6 +108,18 @@ function createApp(options = {}) {
     if (Array.isArray(ministers) && ministers.length) {
       const ministerList = ministers.map((m) => `${m.id}（${m.name}，${m.role || ""}）`).join("、");
       base += `\n\n当前大臣 id 与名字对应：${ministerList}`;
+    }
+
+    const unlocked = Array.isArray(unlockedPolicies) ? unlockedPolicies.filter((id) => typeof id === "string" && id.trim()) : [];
+    const custom = Array.isArray(customPolicies)
+      ? customPolicies
+        .map((item) => (item && typeof item === "object" ? String(item.name || item.title || item.id || "").trim() : ""))
+        .filter(Boolean)
+      : [];
+    if (unlocked.length || custom.length) {
+      const unlockedText = unlocked.length ? unlocked.join("、") : "无";
+      const customText = custom.length ? custom.join("、") : "无";
+      base += `\n\n已实施国策（纳入全局推理）：国策树=${unlockedText}；自定义国策=${customText}。请在剧情、选项和数值推演中综合考虑其持续影响。`;
     }
 
     if (courtChatSummary && typeof courtChatSummary === "string" && courtChatSummary.trim()) {
