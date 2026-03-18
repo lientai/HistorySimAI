@@ -41,6 +41,7 @@ export async function requestStoryTurn(state, lastChoice) {
     header,
     storyParagraphs: normalized.storyParagraphs,
     choices: ensuredChoices,
+    lastChoiceEffects: parsed?.lastChoiceEffects && typeof parsed.lastChoiceEffects === "object" ? parsed.lastChoiceEffects : null,
     news: normalized.news,
     publicOpinion: normalized.publicOpinion,
   };

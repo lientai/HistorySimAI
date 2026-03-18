@@ -139,6 +139,31 @@ function renderDeltaCard(container, effects, state, titleText = "") {
       }
     }
   }
+  if (effects.appointments && typeof effects.appointments === "object") {
+    const ministers = state.ministers || [];
+    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+      entries.push({
+        label: `任命 ${nameById[characterId] || characterId} → ${positionId}`,
+        delta: null,
+        invertColor: false,
+        isAppointment: true,
+      });
+    }
+  }
+  if (effects.characterDeath && typeof effects.characterDeath === "object") {
+    const ministers = state.ministers || [];
+    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
+      entries.push({
+        label: `处置 ${nameById[characterId] || characterId}`,
+        delta: null,
+        invertColor: false,
+        isAppointment: true,
+        customText: typeof reason === "string" && reason ? reason : "已处置",
+      });
+    }
+  }
   if (entries.length === 0) return;
 
   const card = document.createElement("div");
@@ -149,17 +174,22 @@ function renderDeltaCard(container, effects, state, titleText = "") {
     title.textContent = titleText;
     card.appendChild(title);
   }
-  entries.forEach(({ label, delta, invertColor }) => {
+  entries.forEach(({ label, delta, invertColor, isAppointment, customText }) => {
     const row = document.createElement("div");
     row.className = "story-delta-row";
     const lbl = document.createElement("span");
     lbl.className = "story-delta-label";
     lbl.textContent = label;
     const val = document.createElement("span");
-    const isPositive = invertColor ? delta < 0 : delta > 0;
-    val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
-    const sign = delta > 0 ? "+" : "";
-    val.textContent = sign + delta.toLocaleString();
+    if (isAppointment) {
+      val.className = "story-delta-value story-delta-value--appointment";
+      val.textContent = customText || "已生效";
+    } else {
+      const isPositive = invertColor ? delta < 0 : delta > 0;
+      val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
+      const sign = delta > 0 ? "+" : "";
+      val.textContent = sign + delta.toLocaleString();
+    }
     row.appendChild(lbl);
     row.appendChild(val);
     card.appendChild(row);
@@ -290,6 +320,44 @@ function applyEffects(effects) {
       loyalty[id] = Math.max(0, Math.min(100, (loyalty[id] || 0) + clampedDelta));
     }
     setState({ loyalty });
+  }
+
+  if (effects.appointments && typeof effects.appointments === "object") {
+    const currentState = getState();
+    const appointments = { ...(currentState.appointments || {}) };
+    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+      if (typeof positionId !== "string" || typeof characterId !== "string") continue;
+      for (const [posId, charId] of Object.entries(appointments)) {
+        if (charId === characterId && posId !== positionId) {
+          delete appointments[posId];
+        }
+      }
+      appointments[positionId] = characterId;
+    }
+    setState({ appointments });
+  }
+
+  if (effects.characterDeath && typeof effects.characterDeath === "object") {
+    const currentState = getState();
+    const characterStatus = { ...(currentState.characterStatus || {}) };
+    for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
+      if (typeof characterId !== "string") continue;
+      characterStatus[characterId] = {
+        isAlive: false,
+        deathReason: typeof reason === "string" ? reason : "处死",
+        deathDay: currentState.currentMonth || 1,
+      };
+    }
+    const appointments = { ...(currentState.appointments || {}) };
+    for (const characterId of Object.keys(effects.characterDeath)) {
+      for (const [posId, charId] of Object.entries(appointments)) {
+        if (charId === characterId) {
+          delete appointments[posId];
+        }
+      }
+    }
+    setState({ characterStatus, appointments });
+    updateMinisterTabBadge(getState());
   }
 }
 

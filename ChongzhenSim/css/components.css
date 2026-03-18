@@ -207,6 +207,11 @@
   color: var(--color-danger);
 }
 
+.story-delta-value--appointment {
+  color: var(--color-accent);
+  font-size: 12px;
+}
+
 .quarter-agenda-panel {
   margin-bottom: 10px;
   padding: 10px;

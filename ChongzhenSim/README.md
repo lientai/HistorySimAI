@@ -34,10 +34,10 @@
 ```json
 {
   "LLM_API_KEY": "在这里填你的LLM密钥",
-  "LLM_API_BASE": "https://你的模型网关域名",
-  "LLM_MODEL": "grok-4-1-fast-non-reasoning",
-  "LLM_CHAT_MODEL": "grok-4-1-fast-non-reasoning",
-  "PORT": 3001
+  "LLM_API_BASE": "https://open.bigmodel.cn/api/paas/v4",
+  "LLM_MODEL": "glm-4-flash",
+  "LLM_CHAT_MODEL": "glm-4-flash",
+  "PORT": 3002
 }
 ```
 
@@ -45,12 +45,12 @@
 
 - **LLM_API_KEY**：大模型服务提供的 API Key，必填。
 - **LLM_API_BASE**：大模型 HTTP 网关基础地址，例如：
-  - `https://api.openai.com`
-  - `https://epone.ggb.today`
+  - `https://open.bigmodel.cn/api/paas/v4`（智谱AI）
+  - `https://api.openai.com/v1`（OpenAI）
   - 末尾不要加 `/`。
 - **LLM_MODEL**：用来生成诏书剧情的模型名称。
 - **LLM_CHAT_MODEL**：用来生成大臣聊天回复的模型名称。
-- **PORT**：本代理服务监听端口，默认 `3001`。
+- **PORT**：本代理服务监听端口，默认 `3002`。
 
 启动后端：
 
@@ -63,7 +63,7 @@ npm start
 成功后终端会看到类似日志：
 
 ```text
-ChongzhenSim proxy listening on http://localhost:3001 (routes: /api/chongzhen/story, /api/chongzhen/ministerChat)
+ChongzhenSim proxy listening on http://localhost:3002 (routes: /api/chongzhen/story, /api/chongzhen/ministerChat)
 ```
 
 如果未配置 `LLM_API_KEY`，日志会有警告，并且接口返回 500。
@@ -77,7 +77,7 @@ ChongzhenSim proxy listening on http://localhost:3001 (routes: /api/chongzhen/st
 ```json
 {
   "storyMode": "llm",
-  "apiBase": "http://localhost:3001",
+  "apiBase": "http://localhost:3002",
   "loyaltyMax": 100,
   "phaseLabels": {
     "morning": "早朝",
@@ -94,7 +94,7 @@ ChongzhenSim proxy listening on http://localhost:3001 (routes: /api/chongzhen/st
   - `"json"`：只使用本地 `data/story/*.json` 剧情，不访问后端。
 - **apiBase**
   - 指向 `server/index.js` 启动的地址（不带末尾 `/`），例如：
-  - `"http://localhost:3001"`（本地）  
+  - `"http://localhost:3002"`（本地）  
   - 或你的服务器地址：`"https://your-domain.com/chongzhen-api"`（按实际反向代理配置）。
 - **loyaltyMax / phaseLabels**
   - 分别控制忠诚度上限和 UI 中“早朝 / 午后 / 夜间”的展示文字。
@@ -148,7 +148,7 @@ LoveShow 仍然使用自己的：
 3. **配置前端**
    - 编辑 `data/config.json`：
      - `"storyMode": "llm"`
-     - `"apiBase": "http://localhost:3001"`（或你的实际地址）
+     - `"apiBase": "http://localhost:3002"`（或你的实际地址）
 4. **起一个静态文件服务器打开前端**
    - 示例（在 `ChongzhenSim` 目录下）：
      ```bash

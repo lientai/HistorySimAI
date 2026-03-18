@@ -34,6 +34,8 @@ export function buildStoryRequestBody(state, lastChoice) {
       currentMonth: state.currentMonth,
       currentYear: state.currentYear,
       nation: state.nation || {},
+      appointments: state.appointments || {},
+      characterStatus: state.characterStatus || {},
       prestige: state.prestige,
       executionRate: state.executionRate,
     },

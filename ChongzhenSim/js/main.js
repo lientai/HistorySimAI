@@ -20,7 +20,7 @@ async function preloadBasicData() {
     loadJSON("data/nationInit.json").catch(() => ({})),
   ]);
 
-  const ministers = characters.ministers || [];
+  const ministers = characters.characters || characters.ministers || [];
   const loyalty = {};
   ministers.forEach((m) => {
     loyalty[m.id] = m.loyalty || 50;
@@ -59,6 +59,9 @@ async function preloadBasicData() {
     loyalty: mergedLoyalty,
     goals: Array.isArray(goals) ? goals : [],
     nation,
+    appointments: current.appointments || {},
+    characterStatus: current.characterStatus || {},
+    storyHistory: current.storyHistory || [],
     ...coreState,
   });
 }

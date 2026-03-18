@@ -4,10 +4,16 @@
   "description": "Proxy server for LLM story & minister chat API (API key kept server-side)",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest --testEnvironment=node",
+    "test:watch": "jest --watch --testEnvironment=node"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2"
   }
 }

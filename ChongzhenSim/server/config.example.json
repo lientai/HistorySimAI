@@ -1,0 +1,7 @@
+{
+  "LLM_API_KEY": "在这里填你的智谱AI API密钥",
+  "LLM_API_BASE": "https://open.bigmodel.cn/api/paas/v4",
+  "LLM_MODEL": "glm-4-flash",
+  "LLM_CHAT_MODEL": "glm-4-flash",
+  "PORT": 3002
+}
