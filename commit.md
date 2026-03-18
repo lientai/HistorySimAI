@@ -169,8 +169,8 @@
 - 类型：Documentation / Chore
 - 目的：补充 PR 说明，完善改动背景与评审信息。
 
-#### 6.1.4 <待生成> · fix(court): optimize appointment flow and fix api/avatar issues
-- 全哈希：提交后由 `git log -1` 回填
+#### 6.1.4 388ba43 · fix(court): optimize appointment flow and fix api/avatar issues
+- 全哈希：`388ba43ac4d2260c67520c7c4cfc591387f898b2`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
