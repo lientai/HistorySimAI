@@ -72,7 +72,7 @@ async function requestAppoint(positionId, characterId) {
 }
 
 function rerenderCourtMainView() {
-  const container = document.getElementById("view-container");
+  const container = document.getElementById("main-view") || document.getElementById("view-container");
   if (!container) return;
   container.innerHTML = "";
   renderCourtView(container);

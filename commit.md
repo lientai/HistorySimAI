@@ -203,6 +203,26 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
+#### 6.1.6 <待生成> · fix(court): restore click response and reduce missing-resource 404
+- 全哈希：提交后由 `git log -1` 回填
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/js/utils/storyRenderer.js
+  - ChongzhenSim/index.html
+- 玩法兼容与冲突取舍：
+  - 修复朝堂任命点击“无反应”：重渲染容器改为路由实际使用的 `main-view`。
+  - 模板剧情加载改为按 phase 读取 `day1_*` 基准脚本，避免 year/month 路径缺失导致中断。
+  - 对话头像缺图直接文字回退，不再重复请求不存在图片。
+  - 增加 favicon 显式声明，去除默认 `/favicon.ico` 404 噪音。
+- 自检结果：
+  - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
+  - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
+
 ---
 
 ## 7. 提交更新模板（每次复用）
