@@ -210,6 +210,8 @@ function renderNationView(container) {
   const nation = state.nation || {};
   const factionSupport = state.factionSupport || {};
   const quarterAgenda = state.currentQuarterAgenda || [];
+  const provinceStats = state.provinceStats || {};
+  const externalPowers = state.externalPowers || {};
 
   const root = document.createElement("div");
   root.className = "nation-root";
@@ -505,6 +507,56 @@ function renderNationView(container) {
 
         cardBody.appendChild(titleEl);
         cardBody.appendChild(summaryEl);
+
+        const ps = provinceStats[p.name] || {};
+        const taxSilver = ps.taxSilver || 0;
+        const taxGrain = ps.taxGrain || 0;
+        const recruits = ps.recruits || 0;
+        const morale = ps.morale != null ? ps.morale : 50;
+        const corruption = ps.corruption != null ? ps.corruption : 50;
+        const disaster = ps.disaster != null ? ps.disaster : 50;
+
+        const statsRow = document.createElement("div");
+        statsRow.className = "province-stats-row";
+
+        function addTag(text, baseClass, extraClass) {
+          const tag = document.createElement("span");
+          tag.className = "province-tag " + baseClass + (extraClass ? " " + extraClass : "");
+          tag.textContent = text;
+          statsRow.appendChild(tag);
+        }
+
+        // 税收
+        addTag(
+          `税：${taxSilver.toLocaleString()}两 / ${taxGrain.toLocaleString()}石`,
+          "province-tag--income"
+        );
+
+        // 兵源
+        addTag(
+          `兵：${recruits.toLocaleString()}人`,
+          "province-tag--military"
+        );
+
+        // 民心（高好低差）
+        let moraleLevel = "province-tag--neutral";
+        if (morale >= 70) moraleLevel = "province-tag--good";
+        else if (morale <= 40) moraleLevel = "province-tag--bad";
+        addTag(`民心：${morale}/100`, "province-tag--morale", moraleLevel);
+
+        // 贪腐（低好高差）
+        let corrupLevel = "province-tag--neutral";
+        if (corruption >= 70) corrupLevel = "province-tag--bad";
+        else if (corruption <= 40) corrupLevel = "province-tag--good";
+        addTag(`贪腐：${corruption}/100`, "province-tag--corruption", corrupLevel);
+
+        // 天灾（低好高差）
+        let disasterLevel = "province-tag--neutral";
+        if (disaster >= 70) disasterLevel = "province-tag--bad";
+        else if (disaster <= 40) disasterLevel = "province-tag--good";
+        addTag(`天灾：${disaster}/100`, "province-tag--disaster", disasterLevel);
+
+        cardBody.appendChild(statsRow);
         card.appendChild(threatTag);
         card.appendChild(cardBody);
         body.appendChild(card);
@@ -513,13 +565,19 @@ function renderNationView(container) {
     root.appendChild(provinceSection);
   }
 
-  // ── 敌对势力(折叠) ──
+  // ── 敌对/外部势力(折叠) ──
   const hostileForces = Array.isArray(state.hostileForces) && state.hostileForces.length
     ? state.hostileForces
     : (nationInitCache && Array.isArray(nationInitCache.externalThreats) ? nationInitCache.externalThreats : []);
   if (hostileForces.length) {
     const threatSection = createFoldSection("敌对势力", (body) => {
       hostileForces.forEach((t) => {
+        const id = t.id || t.name;
+        const runtimePower = id && typeof externalPowers[id] === "number" ? externalPowers[id] : t.power;
+        const power = typeof runtimePower === "number" ? Math.max(0, Math.min(100, runtimePower)) : 100;
+        if (power <= 0) {
+          return;
+        }
         const card = document.createElement("div");
         card.className = "nation-card";
 
@@ -535,10 +593,24 @@ function renderNationView(container) {
         titleEl.textContent = `${t.name}（${t.leader || "未知"}）${defeatedText}`;
         const summaryEl = document.createElement("div");
         summaryEl.className = "nation-card-summary";
-        const powerText = typeof t.power === "number" ? `势力值 ${t.power}/100` : "势力值未知";
-        summaryEl.textContent = `${t.status || "暂无情报"} · ${powerText}`;
+        const powerSummary = typeof power === "number" ? `势力值 ${power}/100` : "势力值未知";
+        summaryEl.textContent = `${t.status || "暂无情报"} · ${powerSummary}`;
         cardBody.appendChild(titleEl);
         cardBody.appendChild(summaryEl);
+
+        const barWrap = document.createElement("div");
+        barWrap.className = "nation-stat-bar";
+        const barInner = document.createElement("div");
+        barInner.className = "nation-stat-bar-inner";
+        barInner.style.width = power + "%";
+        barWrap.appendChild(barInner);
+
+        const powerValueText = document.createElement("div");
+        powerValueText.className = "nation-stat-value";
+        powerValueText.textContent = `势力：${power}/100`;
+
+        cardBody.appendChild(powerValueText);
+        cardBody.appendChild(barWrap);
 
         card.appendChild(icon);
         card.appendChild(cardBody);

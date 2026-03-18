@@ -129,3 +129,36 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
     }
   }
 }
+
+function applyMonthlyIncome() {
+  const state = getState();
+  const nation = { ...(state.nation || {}) };
+  const provinceStats = state.provinceStats || {};
+  const provinces = Object.values(provinceStats);
+  if (!provinces.length) return;
+
+  let rawSilver = 0;
+  let rawGrain = 0;
+  let sumCorruption = 0;
+  let count = 0;
+
+  provinces.forEach((p) => {
+    if (!p) return;
+    rawSilver += p.taxSilver || 0;
+    rawGrain += p.taxGrain || 0;
+    sumCorruption += typeof p.corruption === "number" ? p.corruption : 0;
+    count += 1;
+  });
+
+  if (!count) return;
+  const avgCorruption = sumCorruption / count;
+  const effectiveRate = Math.max(0, 1 - avgCorruption / 100);
+
+  const silverIncome = Math.max(0, Math.round(rawSilver * effectiveRate));
+  const grainIncome = Math.max(0, Math.round(rawGrain * effectiveRate));
+
+  nation.treasury = Math.max(0, (nation.treasury || 0) + silverIncome);
+  nation.grain = Math.max(0, (nation.grain || 0) + grainIncome);
+
+  setState({ nation });
+}

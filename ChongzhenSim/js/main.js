@@ -48,6 +48,40 @@ async function preloadBasicData() {
 
   const coreState = initializeCoreGameplayState(current, factions, config, nationInit);
   const mergedFactions = Array.isArray(current.factions) && current.factions.length ? current.factions : factions;
+  const externalPowers = (() => {
+    const initMap = {};
+    const existing = current.externalPowers || {};
+    const threats = Array.isArray(nationInit.externalThreats) ? nationInit.externalThreats : [];
+    threats.forEach((t) => {
+      const id = t.id || t.name;
+      if (!id) return;
+      if (typeof existing[id] === "number") {
+        initMap[id] = existing[id];
+      } else if (typeof t.power === "number") {
+        initMap[id] = t.power;
+      } else {
+        initMap[id] = 100;
+      }
+    });
+    return initMap;
+  })();
+
+  const provinceStats = (() => {
+    const map = {};
+    const provinces = Array.isArray(nationInit.provinces) ? nationInit.provinces : [];
+    provinces.forEach((p) => {
+      if (!p || !p.name) return;
+      map[p.name] = {
+        taxSilver: typeof p.taxSilver === "number" ? p.taxSilver : 0,
+        taxGrain: typeof p.taxGrain === "number" ? p.taxGrain : 0,
+        recruits: typeof p.recruits === "number" ? p.recruits : 0,
+        morale: typeof p.morale === "number" ? p.morale : 50,
+        corruption: typeof p.corruption === "number" ? p.corruption : 50,
+        disaster: typeof p.disaster === "number" ? p.disaster : 50,
+      };
+    });
+    return map;
+  })();
 
   setState({
     config: {
@@ -63,6 +97,8 @@ async function preloadBasicData() {
     characterStatus: current.characterStatus || {},
     storyHistory: current.storyHistory || [],
     ...coreState,
+    externalPowers,
+    provinceStats,
   });
 }
 
