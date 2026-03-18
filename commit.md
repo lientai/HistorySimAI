@@ -223,6 +223,22 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
+#### 6.1.7 <待生成> · feat(court): anchor appointment panel under department
+- 全哈希：提交后由 `git log -1` 回填
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：feat
+- 变更文件：
+  - ChongzhenSim/js/ui/courtView.js
+- 玩法兼容与冲突取舍：
+  - 任命面板从页面顶部统一区域改为挂在对应部门分组下方，交互定位更直观。
+  - 按官职任命时严格贴合该部门；按大臣调整时优先贴合当前任职部门。
+  - 保持原有“选择 + 确认”机制与服务端接口兼容，不改变核心任命逻辑。
+- 自检结果：
+  - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
+  - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
+
 ---
 
 ## 7. 提交更新模板（每次复用）

@@ -629,7 +629,7 @@ async function renderPositionMap(container, state) {
   const inlinePanel = document.createElement("div");
   inlinePanel.className = "court-appoint-inline";
 
-  const renderInlinePanel = () => {
+  const renderInlinePanel = (activeDeptId) => {
     inlinePanel.innerHTML = "";
     if (!appointUIState.mode) return;
 
@@ -712,7 +712,7 @@ async function renderPositionMap(container, state) {
         row.textContent = `${c.name}${c.courtesyName ? `（字${c.courtesyName}）` : ""} · ${c.factionLabel || "未知派系"} · 忠诚 ${loyaltyVal}`;
         row.addEventListener("click", () => {
           appointUIState.selectedId = c.id;
-          renderInlinePanel();
+          renderInlinePanel(activeDeptId);
         });
         list.appendChild(row);
       });
@@ -750,6 +750,7 @@ async function renderPositionMap(container, state) {
 
       const targetPositions = positions
         .filter((p) => {
+          if ((p.department || "other") !== activeDeptId) return false;
           if (!keyword) return true;
           return p.name.includes(keyword) || (p.description || "").includes(keyword);
         })
@@ -771,7 +772,7 @@ async function renderPositionMap(container, state) {
         row.textContent = `${p.name}${p.grade ? `（${p.grade}）` : ""} · 当前：${holderName}`;
         row.addEventListener("click", () => {
           appointUIState.selectedId = p.id;
-          renderInlinePanel();
+          renderInlinePanel(activeDeptId);
         });
         list.appendChild(row);
       });
@@ -802,7 +803,7 @@ async function renderPositionMap(container, state) {
     search.addEventListener("input", (e) => {
       appointUIState.keyword = e.target.value || "";
       appointUIState.selectedId = null;
-      renderInlinePanel();
+      renderInlinePanel(activeDeptId);
     });
 
     footer.appendChild(confirmBtn);
@@ -812,9 +813,6 @@ async function renderPositionMap(container, state) {
     inlinePanel.appendChild(list);
     inlinePanel.appendChild(footer);
   };
-
-  renderInlinePanel();
-  card.appendChild(inlinePanel);
 
   const deptMap = new Map(departments.map(d => [d.id, d]));
 
@@ -828,6 +826,43 @@ async function renderPositionMap(container, state) {
   });
 
   const deptOrder = ['neige', 'libu', 'hubu', 'libu_li', 'bingbu', 'xingbu', 'gongbu', 'dutcheng', 'dali_si', 'tongzheng_si', 'shuntian_fu', 'local', 'military', 'neiting', 'other'];
+
+  const findCurrentMinisterPositionId = () => {
+    if (appointUIState.mode !== "byMinister" || !appointUIState.ministerId) return null;
+    for (const [posId, holderId] of Object.entries(appointments)) {
+      if (holderId === appointUIState.ministerId) return posId;
+    }
+    return null;
+  };
+
+  const getActivePanelDeptId = () => {
+    if (!appointUIState.mode) return null;
+
+    if (appointUIState.mode === "byPosition") {
+      const pos = positions.find((p) => p.id === appointUIState.positionId);
+      return (pos?.department || "other");
+    }
+
+    if (appointUIState.mode === "byMinister") {
+      if (appointUIState.selectedId) {
+        const selectedPos = positions.find((p) => p.id === appointUIState.selectedId);
+        if (selectedPos) return selectedPos.department || "other";
+      }
+
+      const currentPosId = findCurrentMinisterPositionId();
+      if (currentPosId) {
+        const currentPos = positions.find((p) => p.id === currentPosId);
+        if (currentPos) return currentPos.department || "other";
+      }
+
+      const firstWithData = deptOrder.find((id) => (groupedPositions.get(id) || []).length > 0);
+      return firstWithData || "other";
+    }
+
+    return null;
+  };
+
+  const activePanelDeptId = getActivePanelDeptId();
 
   deptOrder.forEach(deptId => {
     const posList = groupedPositions.get(deptId);
@@ -925,6 +960,11 @@ async function renderPositionMap(container, state) {
     });
 
     card.appendChild(grid);
+
+    if (appointUIState.mode && activePanelDeptId === deptId) {
+      renderInlinePanel(deptId);
+      card.appendChild(inlinePanel);
+    }
   });
 
   container.appendChild(card);
