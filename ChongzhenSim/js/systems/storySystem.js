@@ -146,12 +146,14 @@ function renderDeltaCard(container, effects, state, titleText = "") {
       }
     }
   }
-  if (effects.appointments && typeof effects.appointments === "object") {
+  if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     const ministers = state.ministers || [];
     const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+      if (typeof positionId !== "string" || typeof characterId !== "string") continue;
       entries.push({
         label: `任命 ${nameById[characterId] || characterId} → ${positionId}`,
+
         delta: null,
         invertColor: false,
         isAppointment: true,
@@ -564,7 +566,7 @@ function applyEffects(effects) {
     setState({ loyalty });
   }
 
-  if (effects.appointments && typeof effects.appointments === "object") {
+  if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     const currentState = getState();
     const appointments = { ...(currentState.appointments || {}) };
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {

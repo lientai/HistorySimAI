@@ -41,10 +41,45 @@ export async function requestStoryTurn(state, lastChoice) {
     header,
     storyParagraphs: normalized.storyParagraphs,
     choices: ensuredChoices,
-    lastChoiceEffects: parsed?.lastChoiceEffects && typeof parsed.lastChoiceEffects === "object" ? parsed.lastChoiceEffects : null,
+    lastChoiceEffects: normalizeLastChoiceEffects(parsed?.lastChoiceEffects),
     news: normalized.news,
     publicOpinion: normalized.publicOpinion,
   };
+}
+
+function normalizeAppointmentsMap(raw) {
+  if (!raw) return undefined;
+  // Already a plain object dict: { positionId: characterId }
+  if (!Array.isArray(raw)) {
+    if (typeof raw !== "object") return undefined;
+    const result = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (typeof k === "string" && typeof v === "string") result[k] = v;
+    }
+    return Object.keys(result).length ? result : undefined;
+  }
+  // Array of { positionId, characterId } objects
+  const result = {};
+  for (const item of raw) {
+    if (item && typeof item === "object" && typeof item.positionId === "string" && typeof item.characterId === "string") {
+      result[item.positionId] = item.characterId;
+    }
+  }
+  return Object.keys(result).length ? result : undefined;
+}
+
+function normalizeLastChoiceEffects(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const effects = { ...raw };
+  if (effects.appointments != null) {
+    const map = normalizeAppointmentsMap(effects.appointments);
+    if (map) {
+      effects.appointments = map;
+    } else {
+      delete effects.appointments;
+    }
+  }
+  return effects;
 }
 
 function safeJsonParse(input) {

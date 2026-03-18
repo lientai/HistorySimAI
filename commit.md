@@ -257,9 +257,44 @@
   - Root：`cd ChongzhenSim && npm test` 通过（98/98）
   - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
 
----
+#### 6.1.9 c4f220b · feat(story): add delete buttons and restore highlights in history turns
+- 全哈希：`c4f220bef4173ce3b64d3454d039d3f0da3bd09c`
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：feat
+- 变更文件：
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/css/components.css
+  - commit.md
+- 玩法兼容与冲突取舍：
+  - 标注合集面板中每条记录新增"删除"按钮，支持单条删除。
+  - 合集底部新增"清空全部标注"按钮，一键清空所有记录。
+  - 历史回合文本现在也支持按已存标注自动回显下划线，与当前回合行为一致。
+  - 未改动存储机制和数据结构，删除操作直接写回 state。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（98/98）
+  - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
 
-## 7. 提交更新模板（每次复用）
+#### 6.1.10 974a3de · fix(story): normalize LLM appointments array to dict, fix [object Object] display
+- 全哈希：`974a3dec964f655365cc9d8d21a6bcc5166e7824`
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/api/llmStory.js
+  - ChongzhenSim/js/systems/storySystem.js
+  - commit.md
+- 问题描述：
+  - LLM 有时将 `lastChoiceEffects.appointments` 返回为对象数组格式（`[{positionId,characterId}]`）而非字典格式（`{positionId: characterId}`）。
+  - `Object.entries()` 在数组上迭代时，键为数组下标（0/1/2/3），值为对象本体，导致面板显示"任命 [object Object] → 0"。
+- 修复策略：
+  - 在 `llmStory.js` 新增 `normalizeAppointmentsMap` 和 `normalizeLastChoiceEffects` 函数，在数据源头将两种格式统一转为字典，非法条目直接跳过。
+  - 在 `storySystem.js` 的 `renderDeltaCard` 和 `applyEffects` 两处消费点增加 `!Array.isArray` 防御判断，确保双重保险。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（98/98）
+  - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
 
 每次执行 `git commit` 后，按以下模板在“6. 增量提交记录”末尾追加一条：
 
