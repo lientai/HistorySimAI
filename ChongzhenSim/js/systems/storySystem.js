@@ -7,6 +7,7 @@ import { computeCustomPolicyQuarterBonus, getPolicyBonusSummary } from "./coreGa
 
 let storyCache = { key: null, data: null };
 let lastAppliedKey = null;
+let storyHighlightPanelExpanded = false;
 
 const MINISTER_NAME_COLORS = [
   "#8B0000", "#2e7d32", "#1565c0", "#e65100", "#6a1b9a",
@@ -284,6 +285,199 @@ function renderPseudoLines(blockEl, text) {
     if (!rawLine.trim()) continue;
     blockEl.appendChild(createLineEl(rawLine));
   }
+}
+
+function getCurrentTurnKey(state) {
+  const year = state.currentYear || 1;
+  const month = state.currentMonth || 1;
+  const phase = state.currentPhase || "morning";
+  return `${year}_${month}_${phase}`;
+}
+
+function formatHighlightTimestamp(isoString) {
+  if (!isoString) return "时间未知";
+  const dt = new Date(isoString);
+  if (Number.isNaN(dt.getTime())) return "时间未知";
+  return dt.toLocaleString("zh-CN", {
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function formatHighlightTurnMeta(item, phaseLabels) {
+  const phaseLabel = phaseLabels[item.phase] || item.phase || "未知时段";
+  return `第${item.year || "?"}年 ${item.month || "?"}月 · ${phaseLabel}`;
+}
+
+function underlineFirstSnippetMatch(rootEl, snippet) {
+  if (!rootEl || !snippet) return false;
+  const textNodes = [];
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+  let current = walker.nextNode();
+  while (current) {
+    if (current.nodeValue && current.nodeValue.trim()) {
+      textNodes.push(current);
+    }
+    current = walker.nextNode();
+  }
+
+  for (const textNode of textNodes) {
+    const parent = textNode.parentElement;
+    if (parent && parent.closest(".story-user-highlight")) continue;
+    const idx = textNode.nodeValue.indexOf(snippet);
+    if (idx === -1) continue;
+
+    const matched = textNode.splitText(idx);
+    const remainder = matched.splitText(snippet.length);
+    const wrap = document.createElement("span");
+    wrap.className = "story-user-highlight";
+    wrap.textContent = matched.nodeValue;
+    matched.parentNode.replaceChild(wrap, matched);
+    if (remainder && remainder.nodeType === Node.TEXT_NODE) {
+      // keep node shape stable after replacement
+    }
+    return true;
+  }
+
+  return false;
+}
+
+function restoreCurrentTurnHighlights(textBlock, state) {
+  const turnKey = getCurrentTurnKey(state);
+  const highlights = (state.storyHighlights || []).filter(
+    (item) => item && item.turnKey === turnKey && typeof item.text === "string" && item.text.trim()
+  );
+
+  highlights.forEach((item) => {
+    underlineFirstSnippetMatch(textBlock, item.text);
+  });
+}
+
+function addStoryHighlightFromSelection(textBlock, state) {
+  if (!textBlock || typeof window === "undefined") {
+    return { ok: false, message: "当前环境不支持文本标注。" };
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return { ok: false, message: "请先选中要标注的对话文本。" };
+  }
+
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) {
+    return { ok: false, message: "请先选中要标注的对话文本。" };
+  }
+
+  if (!textBlock.contains(range.startContainer) || !textBlock.contains(range.endContainer)) {
+    return { ok: false, message: "仅可标注当前回合剧情文本。" };
+  }
+
+  const selectedText = selection.toString().replace(/\s+/g, " ").trim();
+  if (!selectedText) {
+    return { ok: false, message: "选中文本为空，无法标注。" };
+  }
+
+  const underline = document.createElement("span");
+  underline.className = "story-user-highlight";
+
+  try {
+    const fragment = range.extractContents();
+    underline.appendChild(fragment);
+    range.insertNode(underline);
+    selection.removeAllRanges();
+  } catch (_error) {
+    return { ok: false, message: "当前选择范围不支持标注，请缩小选区后重试。" };
+  }
+
+  const existing = Array.isArray(state.storyHighlights) ? state.storyHighlights : [];
+  const highlight = {
+    id: `hl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    text: selectedText,
+    year: state.currentYear || 1,
+    month: state.currentMonth || 1,
+    phase: state.currentPhase || "morning",
+    turnKey: getCurrentTurnKey(state),
+    createdAt: new Date().toISOString(),
+  };
+
+  const updated = [...existing, highlight].slice(-200);
+  setState({ storyHighlights: updated });
+  return { ok: true, message: "已加入标注合集。" };
+}
+
+function createStoryHighlightPanel(state, phaseLabels) {
+  const panel = document.createElement("section");
+  panel.className = "story-highlight-panel";
+  if (storyHighlightPanelExpanded) panel.classList.add("story-highlight-panel--open");
+
+  const header = document.createElement("button");
+  header.type = "button";
+  header.className = "story-highlight-panel__header";
+
+  const title = document.createElement("span");
+  title.className = "story-highlight-panel__title";
+
+  const arrow = document.createElement("span");
+  arrow.className = "story-highlight-panel__arrow";
+  arrow.textContent = "▶";
+  header.appendChild(title);
+  header.appendChild(arrow);
+
+  const body = document.createElement("div");
+  body.className = "story-highlight-panel__body";
+
+  const list = document.createElement("div");
+  list.className = "story-highlight-list";
+  body.appendChild(list);
+
+  function refreshPanel() {
+    const latestState = getState();
+    const highlights = Array.isArray(latestState.storyHighlights)
+      ? [...latestState.storyHighlights].reverse()
+      : [];
+    title.textContent = `标注内容合集（${highlights.length}）`;
+
+    list.innerHTML = "";
+    if (!highlights.length) {
+      const empty = document.createElement("div");
+      empty.className = "story-highlight-list__empty";
+      empty.textContent = "尚未记录标注。可先选中文本，再点击“下划线标注”。";
+      list.appendChild(empty);
+      return;
+    }
+
+    highlights.forEach((item) => {
+      const row = document.createElement("article");
+      row.className = "story-highlight-item";
+
+      const text = document.createElement("div");
+      text.className = "story-highlight-item__text";
+      text.textContent = item.text || "（空标注）";
+      row.appendChild(text);
+
+      const meta = document.createElement("div");
+      meta.className = "story-highlight-item__meta";
+      meta.textContent = `${formatHighlightTurnMeta(item, phaseLabels)} · ${formatHighlightTimestamp(item.createdAt)}`;
+      row.appendChild(meta);
+
+      list.appendChild(row);
+    });
+  }
+
+  header.addEventListener("click", () => {
+    storyHighlightPanelExpanded = !storyHighlightPanelExpanded;
+    panel.classList.toggle("story-highlight-panel--open", storyHighlightPanelExpanded);
+  });
+
+  refreshPanel();
+  panel.appendChild(header);
+  panel.appendChild(body);
+  return { panel, refreshPanel };
 }
 
 function buildBlockText(data) {
@@ -857,7 +1051,37 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   textBlock.className = "edict-block";
   const fullText = buildBlockText(data);
   renderPseudoLines(textBlock, fullText);
+  restoreCurrentTurnHighlights(textBlock, state);
   currentWrap.appendChild(textBlock);
+
+  const highlightToolbar = document.createElement("div");
+  highlightToolbar.className = "story-highlight-toolbar";
+
+  const annotateBtn = document.createElement("button");
+  annotateBtn.type = "button";
+  annotateBtn.className = "story-highlight-toolbar__btn";
+  annotateBtn.textContent = "下划线标注选中文本";
+  highlightToolbar.appendChild(annotateBtn);
+
+  const annotateHint = document.createElement("span");
+  annotateHint.className = "story-highlight-toolbar__hint";
+  annotateHint.textContent = "先在上方剧情中拖选文字，再点击按钮。";
+  highlightToolbar.appendChild(annotateHint);
+
+  currentWrap.appendChild(highlightToolbar);
+
+  const { panel: highlightPanel, refreshPanel } = createStoryHighlightPanel(state, phaseLabels);
+  currentWrap.appendChild(highlightPanel);
+
+  annotateBtn.addEventListener("click", () => {
+    const latest = getState();
+    const result = addStoryHighlightFromSelection(textBlock, latest);
+    annotateHint.textContent = result.message;
+    annotateHint.classList.toggle("story-highlight-toolbar__hint--error", !result.ok);
+    if (result.ok) {
+      refreshPanel();
+    }
+  });
   
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "story-actions";

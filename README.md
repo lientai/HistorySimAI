@@ -118,6 +118,41 @@ HistorySimAI/
 
 ---
 
+## 启动方式
+
+### 一条命令启动前后端
+
+进入 [ChongzhenSim](ChongzhenSim) 目录后执行：
+
+```bash
+npm run start
+```
+
+该命令会同时启动：
+
+- 前端 Vite 开发服务：`http://localhost:5173`
+- 后端 Express 服务：`http://localhost:3002`
+
+### 分开启动
+
+如果需要单独启动，也可以使用：
+
+```bash
+npm run start:frontend
+npm run start:server
+```
+
+启动前建议先分别安装依赖：
+
+```bash
+cd ChongzhenSim
+npm install
+cd server
+npm install
+```
+
+---
+
 ## 🎮 游戏特性
 
 ### 崇祯皇帝模拟器

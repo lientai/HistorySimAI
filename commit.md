@@ -239,6 +239,24 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
+#### 6.1.8 (working tree) · feat(story): add per-turn underline highlights with timestamped collection
+- 全哈希：`待提交`
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：feat
+- 变更文件：
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/js/state.js
+  - ChongzhenSim/css/components.css
+- 玩法兼容与冲突取舍：
+  - 新增“选中文本一键下划线标注”能力，仅作用于当前回合剧情文本，不影响原有剧情/抉择链路。
+  - 新增可折叠“标注内容合集”，按时间倒序展示并附带回合维度与时间戳。
+  - 标注数据接入全局 state 的 `storyHighlights`，沿用既有存档机制持久化。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（98/98）
+  - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
+
 ---
 
 ## 7. 提交更新模板（每次复用）

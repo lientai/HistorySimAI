@@ -47,6 +47,7 @@ const initialState = {
   lastChoiceText: null,
   lastChoiceHint: null,
   storyHistory: [],
+  storyHighlights: [],
 
   courtChats: {},
   ministerUnread: {},

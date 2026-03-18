@@ -212,6 +212,119 @@
   font-size: 12px;
 }
 
+.story-user-highlight {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  text-decoration-color: #8d572c;
+  background: rgba(216, 185, 142, 0.2);
+  border-radius: 2px;
+}
+
+.story-highlight-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.story-highlight-toolbar__btn {
+  border: 1px solid var(--color-border-soft);
+  background: #fffdf8;
+  color: var(--color-text-main);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.story-highlight-toolbar__hint {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.story-highlight-toolbar__hint--error {
+  color: var(--color-danger);
+}
+
+.story-highlight-panel {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f9f4e9 0%, #f3ead8 100%);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.story-highlight-panel__header {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: left;
+}
+
+.story-highlight-panel__arrow {
+  font-size: 10px;
+  color: var(--color-text-sub);
+  transition: transform 0.2s ease;
+}
+
+.story-highlight-panel--open .story-highlight-panel__arrow {
+  transform: rotate(90deg);
+}
+
+.story-highlight-panel__body {
+  display: none;
+  padding: 0 10px 10px;
+}
+
+.story-highlight-panel--open .story-highlight-panel__body {
+  display: block;
+}
+
+.story-highlight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.story-highlight-list__empty {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  padding-top: 4px;
+}
+
+.story-highlight-item {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 8px;
+}
+
+.story-highlight-item__text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-main);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.story-highlight-item__meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
 .quarter-agenda-panel {
   margin-bottom: 10px;
   padding: 10px;

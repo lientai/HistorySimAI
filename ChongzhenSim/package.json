@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "start": "node scripts/start-dev.mjs",
+    "start:server": "npm --prefix server start",
+    "start:frontend": "vite",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
