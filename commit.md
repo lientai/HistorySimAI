@@ -343,6 +343,39 @@
   - Root：`cd ChongzhenSim && npm test` 通过（100/100）
   - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
 
+#### 6.1.13 44d5fdd · feat(gameplay): align day1 roster, persist current turn story, auto-quarter appointments
+- 全哈希：`44d5fdd526c35f7831d2850733f244780d17dfe4`
+- 时间：2026-03-19
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：feat
+- 变更文件：
+  - ChongzhenSim/js/main.js
+  - ChongzhenSim/js/state.js
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/js/systems/turnSystem.js
+  - ChongzhenSim/js/api/validators.js
+  - ChongzhenSim/js/api/validators.test.js
+  - ChongzhenSim/js/api/llmStory.js
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/css/components.css
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+- 问题描述：
+  - day1 剧情中的官员与朝堂默认任命体系存在不一致感知。
+  - 未进行任何操作时刷新页面会触发当前回合剧情重新生成。
+  - 对话文本偶发出现“中文姓名(english_id)”样式，影响沉浸感。
+  - 季度流程缺少对空缺官职的自动补官闭环。
+- 修复策略：
+  - 预加载阶段在无存档任命时改为按 `positions.json` 的 `defaultHolder` 初始化任命，统一 day1 与朝堂默认名单基准。
+  - 新增 `currentStoryTurn` 持久化当前回合剧情快照，刷新后优先复用，不再无操作重生剧情。
+  - 在文本归一化阶段清理“中文名后英文括号后缀”，并增强字符串数值解析。
+  - 新增季度自动补官：季度月自动为空缺官职从在世候选中按忠诚优先补位，并写入系统新闻。
+  - 同步优化朝堂部门分组 UI 结构与视觉层次。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（103/103）
+  - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（50/50）
+
 每次执行 `git commit` 后，按以下模板在“6. 增量提交记录”末尾追加一条：
 
 ```markdown
