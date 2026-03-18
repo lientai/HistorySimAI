@@ -276,8 +276,8 @@
   - Root：`cd ChongzhenSim && npm test` 通过（98/98）
   - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
 
-#### 6.1.10 974a3de · fix(story): normalize LLM appointments array to dict, fix [object Object] display
-- 全哈希：`974a3dec964f655365cc9d8d21a6bcc5166e7824`
+#### 6.1.10 d681121 · fix(story): normalize LLM appointments array to dict, fix [object Object] display
+- 全哈希：`d6811217b8a041c73a9fc2f577b9d7ceafbe603a`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
@@ -292,6 +292,28 @@
 - 修复策略：
   - 在 `llmStory.js` 新增 `normalizeAppointmentsMap` 和 `normalizeLastChoiceEffects` 函数，在数据源头将两种格式统一转为字典，非法条目直接跳过。
   - 在 `storySystem.js` 的 `renderDeltaCard` 和 `applyEffects` 两处消费点增加 `!Array.isArray` 防御判断，确保双重保险。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（98/98）
+  - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
+
+#### 6.1.11 5a54cfc · fix(story): include season/weather context and prevent duplicate opposite delta cards
+- 全哈希：`5a54cfc6d378b5d4d7f95c1360d89af61468f774`
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+  - ChongzhenSim/js/api/llmStory.js
+  - ChongzhenSim/js/systems/storySystem.js
+- 问题描述：
+  - 每回合剧情头部偶发缺失季节/天气，提示词中也未明确携带该上下文。
+  - 自拟诏书回合在 LLM 修正后重复渲染了“本轮推演数值变动”，出现一正一负两张卡。
+- 修复策略：
+  - 服务端 buildUserMessage 改为使用 `currentYear/currentMonth/weather` 并补充季节推导，明确要求 header 返回 `time/season/weather`。
+  - 前端 `llmStory.js` 对 header 增加 season/weather 兜底，确保每回合显示完整。
+  - `storySystem.js` 在自拟诏书修正阶段替换最后一张 delta 卡，不再追加第二张冲突卡片。
 - 自检结果：
   - Root：`cd ChongzhenSim && npm test` 通过（98/98）
   - Server：`cd ChongzhenSim/server && npm test -- --runInBand` 通过（49/49）
