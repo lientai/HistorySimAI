@@ -203,8 +203,8 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
-#### 6.1.6 <待生成> · fix(court): restore click response and reduce missing-resource 404
-- 全哈希：提交后由 `git log -1` 回填
+#### 6.1.6 8364098 · fix(court): restore click response and reduce missing-resource 404
+- 全哈希：`8364098acfc3e2c64389e0c33251ade062a1596f`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
