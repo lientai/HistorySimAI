@@ -347,8 +347,8 @@ function underlineFirstSnippetMatch(rootEl, snippet) {
   return false;
 }
 
-function restoreCurrentTurnHighlights(textBlock, state) {
-  const turnKey = getCurrentTurnKey(state);
+function restoreHighlightsForTurn(textBlock, year, month, phase, state) {
+  const turnKey = `${year}_${month}_${phase}`;
   const highlights = (state.storyHighlights || []).filter(
     (item) => item && item.turnKey === turnKey && typeof item.text === "string" && item.text.trim()
   );
@@ -356,6 +356,13 @@ function restoreCurrentTurnHighlights(textBlock, state) {
   highlights.forEach((item) => {
     underlineFirstSnippetMatch(textBlock, item.text);
   });
+}
+
+function restoreCurrentTurnHighlights(textBlock, state) {
+  const year = state.currentYear || 1;
+  const month = state.currentMonth || 1;
+  const phase = state.currentPhase || "morning";
+  restoreHighlightsForTurn(textBlock, year, month, phase, state);
 }
 
 function addStoryHighlightFromSelection(textBlock, state) {
@@ -435,6 +442,18 @@ function createStoryHighlightPanel(state, phaseLabels) {
   list.className = "story-highlight-list";
   body.appendChild(list);
 
+  function removeHighlight(highlightId) {
+    const latestState = getState();
+    const updated = (latestState.storyHighlights || []).filter((item) => item.id !== highlightId);
+    setState({ storyHighlights: updated });
+    refreshPanel();
+  }
+
+  function clearAllHighlights() {
+    setState({ storyHighlights: [] });
+    refreshPanel();
+  }
+
   function refreshPanel() {
     const latestState = getState();
     const highlights = Array.isArray(latestState.storyHighlights)
@@ -465,8 +484,27 @@ function createStoryHighlightPanel(state, phaseLabels) {
       meta.textContent = `${formatHighlightTurnMeta(item, phaseLabels)} · ${formatHighlightTimestamp(item.createdAt)}`;
       row.appendChild(meta);
 
+      const actions = document.createElement("div");
+      actions.className = "story-highlight-item__actions";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "story-highlight-item__delete-btn";
+      deleteBtn.textContent = "删除";
+      deleteBtn.addEventListener("click", () => removeHighlight(item.id));
+      actions.appendChild(deleteBtn);
+      row.appendChild(actions);
+
       list.appendChild(row);
     });
+
+    if (highlights.length > 0) {
+      const clearAllBtn = document.createElement("button");
+      clearAllBtn.type = "button";
+      clearAllBtn.className = "story-highlight-list__clear-all-btn";
+      clearAllBtn.textContent = "清空全部标注";
+      clearAllBtn.addEventListener("click", () => clearAllHighlights());
+      list.appendChild(clearAllBtn);
+    }
   }
 
   header.addEventListener("click", () => {
@@ -787,6 +825,7 @@ function renderStoryHistory(container, history, phaseLabels, state, renderId) {
     block.className = "edict-block story-history-block";
     const historyText = buildBlockText(data);
     renderPseudoLines(block, historyText);
+    restoreHighlightsForTurn(block, parseInt(year, 10), parseInt(month, 10), phase, state);
     container.appendChild(block);
     
     if (entry.chosenChoice && entry.chosenChoice.text) {

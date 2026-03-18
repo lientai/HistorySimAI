@@ -239,8 +239,8 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
-#### 6.1.8 (working tree) · feat(story): add per-turn underline highlights with timestamped collection
-- 全哈希：`待提交`
+#### 6.1.8 2a9e718 · feat(story): add per-turn underline highlights with timestamped collection
+- 全哈希：`2a9e718fcc0d3ebc7e9973a8ce0c3c56c488cfb0`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
