@@ -400,3 +400,20 @@
 - 只追加，不覆盖旧记录。
 - 如果是 merge commit，`变更文件` 可写“由 merge 产生，见对应 diff”。
 - 若本次未执行测试，明确标注“未执行 + 原因”。
+
+#### 6.1.14 86d898a · feat(court-ui): compact department blocks and move minister/faction to modals
+- 全哈希：86d898ae3af1cf36a671f7c6a34b6bb4792cba5f
+- 时间：2026-03-19
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：feat
+- 变更文件：
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/css/components.css
+- 玩法兼容与冲突取舍：
+  - 缩窄朝堂部门色块并优化标题层次，减少部门区域视觉压迫感。
+  - 群臣列表与派系改为按钮触发弹窗展示，缓解朝堂部门过多导致的主页面拥挤。
+  - 朝堂界面统一清理“中文名后英文括号后缀”，并保持既有聊天、任命与详情交互链路。
+- 自检结果：
+  - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）
+  - Server：cd ChongzhenSim/server && npm test -- --runInBand 通过（50/50）
