@@ -1,0 +1,148 @@
+# Repository Full Change Log (Commit2)
+
+## 1. 概览
+- 时间范围：2026-03-13 至 2026-03-18
+- 提交总数：12
+- 主要贡献者：
+  - JINTIAN-LIU（5）
+  - seanfan（3）
+  - 吴同（4，含 2 个邮箱身份）
+
+本文件按 PR 描述风格，汇总本地仓库建立以来的所有历史改动，并补充逻辑自检结论。
+
+---
+
+## 2. 全量提交时间线（按时间正序）
+
+### 2.1 d79c560 · 2026-03-13 · Initial commit
+- 变更规模：682 files changed, +73,730
+- 关键内容：
+  - 建立项目基础骨架（前端、后端、资源、依赖）
+  - 初始玩法与页面结构落地
+  - `ChongzhenSim/server/node_modules`、`package-lock` 等依赖文件被纳入
+
+### 2.2 b111dfb · 2026-03-13 · Create README.md
+- 变更规模：1 file changed, +56
+- 关键内容：
+  - 新增仓库说明文档 `README.md`
+
+### 2.3 a4fffef · 2026-03-13 · Update README.md
+- 变更规模：1 file changed, +2
+- 关键内容：
+  - README 细节更新
+
+### 2.4 1f90bf5 · 2026-03-14 · Add files via upload
+- 变更规模：1 file changed, +281 / -235
+- 关键内容：
+  - 重点修改 `ChongzhenSim/server/index.js`
+  - 后端剧情代理逻辑与提示词/接口实现迭代
+
+### 2.5 34ef229 · 2026-03-14 · Add files via upload
+- 变更规模：2 files changed, +629 / -568
+- 关键内容：
+  - 重点修改：
+    - `ChongzhenSim/js/systems/nationSystem.js`
+    - `ChongzhenSim/js/systems/storySystem.js`
+  - 核心玩法系统与叙事系统重构
+
+### 2.6 d799c80 · 2026-03-14 · Add files via upload
+- 变更规模：1 file changed, +8 / -8
+- 关键内容：
+  - `ChongzhenSim/data/goals.json` 调整
+
+### 2.7 01870b5 · 2026-03-14 · Merge pull request #1 from tmadmao/main
+- 变更规模：Merge commit（无独立 shortstat）
+- 关键内容：
+  - 合并上游/分支改动，统一主线
+
+### 2.8 99a8dd8 · 2026-03-17 · 月度化+季度化玩法大更新
+- 变更规模：688 files changed, +75,670
+- 关键内容：
+  - 玩法节奏从“日”改为“月”，引入季度结算
+  - 引入国策树与皇帝成长等系统化玩法
+  - 大范围更新数据、UI、系统层与后端：
+    - `ChongzhenSim/data/*`
+    - `ChongzhenSim/js/api/*`
+    - `ChongzhenSim/js/systems/*`
+    - `ChongzhenSim/js/ui/*`
+    - `ChongzhenSim/server/*`
+
+### 2.9 ca0fc27 · 2026-03-17 · 恢复配置文件
+- 变更规模：1 file changed, +4 / -4
+- 关键内容：
+  - `ChongzhenSim/server/config.json` 配置修复
+
+### 2.10 76daa6c · 2026-03-17 · merge upstream/main: resolve conflicts
+- 变更规模：Merge commit（无独立 shortstat）
+- 关键内容：
+  - 同步并解决上游冲突
+
+### 2.11 03038a1 · 2026-03-17 · 季度议题/敌对势力/50国策/平衡验证
+- 变更规模：14 files changed, +1,473 / -64
+- 关键内容：
+  - 新增/外置平衡配置：`ChongzhenSim/data/balanceConfig.json`
+  - 新增省份动态规则：`ChongzhenSim/data/provinceRules.json`
+  - 核心玩法系统扩展：`ChongzhenSim/js/systems/coreGameplaySystem.js`
+  - 季度与叙事联动：`storySystem.js`, `turnSystem.js`, `nationView.js`
+  - 增加平衡回归脚本：`ChongzhenSim/scripts/balanceCheck.mjs`
+  - 后端与接口联动更新：`server/index.js`, `api/llmStory.js`, `api/ministerChat.js`
+
+### 2.12 236a66c · 2026-03-18 · 季度奏折上下文驱动 + 冗余优化
+- 变更规模：10 files changed, +651 / -223
+- 关键内容：
+  - 季度奏折从固定模板转为上下文驱动
+  - 新增 API 公共模块，减少重复代码：
+    - `ChongzhenSim/js/api/httpClient.js`
+    - `ChongzhenSim/js/api/requestContext.js`
+    - `ChongzhenSim/js/api/validators.js`
+  - 调整季度 UI 与文案分层：
+    - `ChongzhenSim/css/components.css`
+    - `storySystem.js`, `coreGameplaySystem.js`
+
+---
+
+## 3. 关键演进主线（跨提交归纳）
+
+### 3.1 基础搭建阶段（03-13）
+- 完成项目可运行框架与文档初始化
+
+### 3.2 玩法与系统重构阶段（03-14）
+- 对剧情系统、国势系统、目标配置进行结构化改造
+
+### 3.3 月度/季度核心玩法成型阶段（03-17）
+- 月度回合、季度结算、国策树、成长体系进入主干
+- 引入敌对势力可打击到灭亡的连续战事逻辑
+
+### 3.4 数据驱动与质量优化阶段（03-17 ~ 03-18）
+- 平衡参数外置（`balanceConfig.json`）
+- 省份规则外置（`provinceRules.json`）
+- API 请求构造/校验/HTTP 调用模块化，减少冗余
+- 季度奏折实现“上下文承接 + 优先级分层（急/重/缓）”
+
+---
+
+## 4. 自检逻辑结论
+
+### 4.1 完整性自检
+- 已覆盖从首个提交到当前 HEAD 的 12 条提交记录（含 2 条 merge commit）。
+- 时间线、提交哈希、作者、主题与 shortstat 一致。
+
+### 4.2 一致性自检
+- 历史描述与最近实际改动方向一致：
+  - 季度奏折上下文驱动
+  - 平衡配置外置
+  - API 冗余清理
+  - UI 优先级分层
+
+### 4.3 风险与建议
+- 历史中多次提交了 `server/node_modules`，会造成仓库膨胀与审阅噪声。
+- 建议后续将依赖目录从版本库中移除并使用锁文件管理（保留 `package-lock.json`）。
+
+---
+
+## 5. 结论
+- 本地仓库自建立以来的改动已形成完整闭环：
+  - 从初始框架到玩法主循环
+  - 从功能堆叠到数据驱动
+  - 从可用到可维护（去冗余、统一校验、回归验证）
+- 当前提交历史可直接作为 PR 汇总或阶段性里程碑说明基础版本。
