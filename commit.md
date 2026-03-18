@@ -223,8 +223,8 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
-#### 6.1.7 <待生成> · feat(court): anchor appointment panel under department
-- 全哈希：提交后由 `git log -1` 回填
+#### 6.1.7 ead353d · feat(court): anchor appointment panel under department
+- 全哈希：`ead353d450b7561d8262e1088da6ae74908d3ec3`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
