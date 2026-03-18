@@ -678,6 +678,17 @@
   border-radius: 8px;
 }
 
+.avatar-fallback-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
 .minister-avatar-loyalty {
   position: absolute;
   right: -2px;
@@ -887,6 +898,37 @@
   font-size: 13px;
   color: var(--color-text-main);
   text-align: center;
+}
+
+.appointment-selected-hint {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--color-text-sub);
+  background: #f6f1e7;
+  border: 1px solid var(--color-border-soft);
+}
+
+.appointment-character-item--selected {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 1px rgba(139, 0, 0, 0.2);
+  background: #fcf6ee;
+}
+
+.appointment-dialog-confirm {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-accent-soft);
+  background: var(--color-accent);
+  color: var(--color-gold);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.appointment-dialog-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* 朝堂议事聊天 */

@@ -4,6 +4,7 @@ import { updateMinisterTabBadge } from "../layout.js";
 import { loadJSON } from "../dataLoader.js";
 import { getLoyaltyTags, getLoyaltyStage, getLoyaltyColor, getFactionClass } from "../systems/courtSystem.js";
 import { requestMinisterReply } from "../api/ministerChat.js";
+import { getApiBase } from "../api/httpClient.js";
 
 let currentMinisterChatId = null;
 let tagsConfigCache = null;
@@ -11,14 +12,72 @@ let factionsCache = null;
 let positionsCache = null;
 const sendingFlags = {};
 
+const AVAILABLE_AVATAR_NAMES = new Set([
+  "黄道周", "韩继思", "陈新甲", "袁崇焕", "范景文", "祖大寿", "王永光", "温体仁", "洪承畴", "毕自严",
+  "梁廷栋", "林钎", "杨嗣昌", "李邦华", "曹文诏", "曹化淳", "张凤翔", "左良玉", "孙承宗", "孙传庭",
+  "周延儒", "周奎", "吴三桂", "史可法", "卢象升", "倪元璐",
+]);
+
+function createAvatarFallback(parent, fallbackChar) {
+  if (!parent) return;
+  let fallbackNode = parent.querySelector(".avatar-fallback-text");
+  if (!fallbackNode) {
+    fallbackNode = document.createElement("span");
+    fallbackNode.className = "avatar-fallback-text";
+    fallbackNode.textContent = fallbackChar || "臣";
+    parent.appendChild(fallbackNode);
+  }
+}
+
+function resolveApiUrl(pathname) {
+  const apiBase = getApiBase(getState().config || {}, "courtView");
+  if (!apiBase) return pathname;
+  return `${apiBase}${pathname}`;
+}
+
+async function requestAppoint(positionId, characterId) {
+  const state = getState();
+  const response = await fetch(resolveApiUrl("/api/chongzhen/appoint"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      positionId,
+      characterId,
+      state: {
+        appointments: state.appointments || {},
+        characterStatus: state.characterStatus || {},
+      },
+    }),
+  });
+
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_e) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || text || `HTTP ${response.status}`);
+  }
+  return data || { success: true };
+}
+
 function createAvatarImg(name, fallbackChar) {
   const img = document.createElement("img");
-  img.src = `assets/${name}.jpg`;
   img.alt = name || "";
   img.onerror = function () {
     this.style.display = "none";
-    this.parentElement.textContent = fallbackChar || (name ? name.charAt(0) : "臣");
+    createAvatarFallback(this.parentElement, fallbackChar || (name ? name.charAt(0) : "臣"));
   };
+
+  if (name && AVAILABLE_AVATAR_NAMES.has(name)) {
+    img.src = `assets/${name}.jpg`;
+  } else {
+    queueMicrotask(() => img.onerror());
+  }
+
   return img;
 }
 
@@ -155,6 +214,35 @@ async function showPositionSelectDialog(minister, state) {
   positionList.className = "appointment-character-list";
   positionList.style.maxHeight = "300px";
 
+  const selectedHint = document.createElement("div");
+  selectedHint.className = "appointment-selected-hint";
+  selectedHint.textContent = "请选择一个官职后点击“确认调整”。";
+
+  let selectedPosition = null;
+  let appointing = false;
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "appointment-dialog-confirm";
+  confirmBtn.textContent = "确认调整";
+  confirmBtn.disabled = true;
+
+  const updateConfirmState = () => {
+    confirmBtn.disabled = !selectedPosition || appointing;
+    selectedHint.textContent = selectedPosition
+      ? `已选择：${selectedPosition.name}`
+      : "请选择一个官职后点击“确认调整”。";
+  };
+
+  const selectPosition = (item, pos) => {
+    positionList.querySelectorAll(".appointment-character-item--selected").forEach((el) => {
+      el.classList.remove("appointment-character-item--selected");
+    });
+    item.classList.add("appointment-character-item--selected");
+    selectedPosition = pos;
+    updateConfirmState();
+  };
+
   positions.forEach(pos => {
     const item = document.createElement("div");
     item.className = "appointment-character-item";
@@ -174,48 +262,54 @@ async function showPositionSelectDialog(minister, state) {
     info.appendChild(metaEl);
     item.appendChild(info);
 
-    item.addEventListener("click", async () => {
-      try {
-        const s = getState();
-        const currentAppointments = s.appointments || {};
-        const newAppointments = { ...currentAppointments };
-        
-        for (const [posId, charId] of Object.entries(newAppointments)) {
-          if (charId === minister.id) {
-            delete newAppointments[posId];
-          }
-        }
-        
-        newAppointments[pos.id] = minister.id;
-        
-        const response = await fetch("/api/chongzhen/appoint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ positionId: pos.id, characterId: minister.id })
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-          setState({ appointments: newAppointments });
-          overlay.remove();
-          const container = document.getElementById("view-container");
-          if (container) {
-            container.innerHTML = "";
-            renderCourtView(container);
-          }
-        } else {
-          alert(`任命失败: ${result.error || "未知错误"}`);
-        }
-      } catch (e) {
-        alert(`任命失败: ${e.message}`);
-      }
-    });
+    item.addEventListener("click", () => selectPosition(item, pos));
 
     positionList.appendChild(item);
   });
 
+  confirmBtn.addEventListener("click", async () => {
+    if (!selectedPosition || appointing) return;
+
+    appointing = true;
+    confirmBtn.textContent = "调整中...";
+    updateConfirmState();
+
+    try {
+      const result = await requestAppoint(selectedPosition.id, minister.id);
+      if (result?.success === false) {
+        alert(`任命失败: ${result.error || "未知错误"}`);
+        return;
+      }
+
+      const s = getState();
+      const currentAppointments = s.appointments || {};
+      const newAppointments = { ...currentAppointments };
+      for (const [posId, charId] of Object.entries(newAppointments)) {
+        if (charId === minister.id) {
+          delete newAppointments[posId];
+        }
+      }
+      newAppointments[selectedPosition.id] = minister.id;
+
+      setState({ appointments: newAppointments });
+      overlay.remove();
+      const container = document.getElementById("view-container");
+      if (container) {
+        container.innerHTML = "";
+        renderCourtView(container);
+      }
+    } catch (e) {
+      alert(`任命失败: ${e.message}`);
+    } finally {
+      appointing = false;
+      confirmBtn.textContent = "确认调整";
+      updateConfirmState();
+    }
+  });
+
   const body = document.createElement("div");
   body.className = "appointment-dialog-card__body";
+  body.appendChild(selectedHint);
   body.appendChild(positionList);
 
   const footer = document.createElement("div");
@@ -225,6 +319,7 @@ async function showPositionSelectDialog(minister, state) {
   cancelBtn.className = "appointment-dialog-cancel";
   cancelBtn.textContent = "取消";
   cancelBtn.addEventListener("click", () => overlay.remove());
+  footer.appendChild(confirmBtn);
   footer.appendChild(cancelBtn);
 
   card.appendChild(header);
@@ -804,6 +899,35 @@ async function showAppointmentDialogAsync(position, state) {
   const characterList = document.createElement("div");
   characterList.className = "appointment-character-list";
 
+  const selectedHint = document.createElement("div");
+  selectedHint.className = "appointment-selected-hint";
+  selectedHint.textContent = "请先选择一位角色，再点击“确认任命”。";
+
+  let selectedCharacter = null;
+  let appointing = false;
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "appointment-dialog-confirm";
+  confirmBtn.textContent = "确认任命";
+  confirmBtn.disabled = true;
+
+  const updateConfirmState = () => {
+    confirmBtn.disabled = !selectedCharacter || appointing;
+    selectedHint.textContent = selectedCharacter
+      ? `已选择：${selectedCharacter.name}`
+      : "请先选择一位角色，再点击“确认任命”。";
+  };
+
+  const selectCharacter = (item, char) => {
+    characterList.querySelectorAll(".appointment-character-item--selected").forEach((el) => {
+      el.classList.remove("appointment-character-item--selected");
+    });
+    item.classList.add("appointment-character-item--selected");
+    selectedCharacter = char;
+    updateConfirmState();
+  };
+
   const renderCharacters = (filter = "") => {
     characterList.innerHTML = "";
     const filtered = filter 
@@ -854,43 +978,7 @@ async function showAppointmentDialogAsync(position, state) {
       item.appendChild(avatar);
       item.appendChild(info);
 
-      item.addEventListener("click", async () => {
-        try {
-          const s = getState();
-          const currentAppointments = s.appointments || {};
-          
-          const newAppointments = { ...currentAppointments };
-          
-          for (const [posId, charId] of Object.entries(newAppointments)) {
-            if (charId === char.id) {
-              delete newAppointments[posId];
-            }
-          }
-          
-          newAppointments[position.id] = char.id;
-          
-          const response = await fetch("/api/chongzhen/appoint", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ positionId: position.id, characterId: char.id })
-          });
-          const result = await response.json();
-          
-          if (result.success) {
-            setState({ appointments: newAppointments });
-            overlay.remove();
-            const container = document.getElementById("view-container");
-            if (container) {
-              container.innerHTML = "";
-              renderCourtView(container);
-            }
-          } else {
-            alert(`任命失败: ${result.error || "未知错误"}`);
-          }
-        } catch (e) {
-          alert(`任命失败: ${e.message}`);
-        }
-      });
+      item.addEventListener("click", () => selectCharacter(item, char));
 
       characterList.appendChild(item);
     });
@@ -900,9 +988,50 @@ async function showAppointmentDialogAsync(position, state) {
     renderCharacters(e.target.value);
   });
 
+  confirmBtn.addEventListener("click", async () => {
+    if (!selectedCharacter || appointing) return;
+
+    appointing = true;
+    confirmBtn.textContent = "任命中...";
+    updateConfirmState();
+
+    try {
+      const result = await requestAppoint(position.id, selectedCharacter.id);
+      if (result?.success === false) {
+        alert(`任命失败: ${result.error || "未知错误"}`);
+        return;
+      }
+
+      const s = getState();
+      const currentAppointments = s.appointments || {};
+      const newAppointments = { ...currentAppointments };
+      for (const [posId, charId] of Object.entries(newAppointments)) {
+        if (charId === selectedCharacter.id) {
+          delete newAppointments[posId];
+        }
+      }
+      newAppointments[position.id] = selectedCharacter.id;
+
+      setState({ appointments: newAppointments });
+      overlay.remove();
+      const container = document.getElementById("view-container");
+      if (container) {
+        container.innerHTML = "";
+        renderCourtView(container);
+      }
+    } catch (e) {
+      alert(`任命失败: ${e.message}`);
+    } finally {
+      appointing = false;
+      confirmBtn.textContent = "确认任命";
+      updateConfirmState();
+    }
+  });
+
   const body = document.createElement("div");
   body.className = "appointment-dialog-card__body";
   body.appendChild(positionInfo);
+  body.appendChild(selectedHint);
   body.appendChild(searchInput);
   body.appendChild(characterList);
 
@@ -913,6 +1042,7 @@ async function showAppointmentDialogAsync(position, state) {
   cancelBtn.className = "appointment-dialog-cancel";
   cancelBtn.textContent = "取消";
   cancelBtn.addEventListener("click", () => overlay.remove());
+  footer.appendChild(confirmBtn);
   footer.appendChild(cancelBtn);
 
   card.appendChild(header);

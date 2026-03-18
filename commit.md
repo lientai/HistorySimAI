@@ -169,6 +169,23 @@
 - 类型：Documentation / Chore
 - 目的：补充 PR 说明，完善改动背景与评审信息。
 
+#### 6.1.4 <待生成> · fix(court): optimize appointment flow and fix api/avatar issues
+- 全哈希：提交后由 `git log -1` 回填
+- 时间：2026-03-18
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/css/components.css
+- 玩法兼容与冲突取舍：
+  - 朝堂任命链路改为“选择 + 确认”，降低误触并提升操作反馈。
+  - 前端任命接口统一走 apiBase，兼容 8080 静态页 + 3002 API 服务拆分。
+  - 头像加载增加本地回退策略，缺失资源不再持续触发 404 噪音。
+- 自检结果：
+  - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
+  - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
+
 ---
 
 ## 7. 提交更新模板（每次复用）
