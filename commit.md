@@ -146,3 +146,54 @@
   - 从功能堆叠到数据驱动
   - 从可用到可维护（去冗余、统一校验、回归验证）
 - 当前提交历史可直接作为 PR 汇总或阶段性里程碑说明基础版本。
+
+---
+
+## 6. 增量提交记录（持续追加）
+
+本节用于“每次提交后立即补录”，不改动上方历史正文，仅增量追加，便于长期维护。
+
+### 6.1 最新提交快照（2026-03-18）
+
+#### 6.1.1 3883ca3 · merge upstream/main into my-feature-branch
+- 全哈希：`3883ca356f2fcc7de35a9b8481e674c501cb513a`
+- 作者：JINTIAN-LIU
+- 类型：Merge Commit
+- 目的：同步上游分支，吸收最新改动并继续在 `my-feature-branch` 开发。
+
+#### 6.1.2 a002b54 · merge feat(官位任命系统) into my-feature-branch
+- 类型：Merge Commit
+- 目的：合并官位任命系统模块到当前开发分支，推进玩法兼容。
+
+#### 6.1.3 88bee5e · 详细说明该PULL REQUEST改动
+- 类型：Documentation / Chore
+- 目的：补充 PR 说明，完善改动背景与评审信息。
+
+---
+
+## 7. 提交更新模板（每次复用）
+
+每次执行 `git commit` 后，按以下模板在“6. 增量提交记录”末尾追加一条：
+
+```markdown
+#### 6.x.<序号> <short-hash> · <commit subject>
+- 全哈希：`<full-hash>`
+- 时间：<YYYY-MM-DD>
+- 分支：<branch-name>
+- 作者：<author>
+- 类型：<feat/fix/refactor/docs/chore/test/merge>
+- 变更文件：
+  - <path1>
+  - <path2>
+- 玩法兼容与冲突取舍：
+  - <保留了哪些主链逻辑>
+  - <吸收了哪些新模块能力>
+- 自检结果：
+  - Root：<npm --prefix ChongzhenSim test --silent 结果>
+  - Server：<npm --prefix ChongzhenSim/server test --silent 结果>
+```
+
+执行规范：
+- 只追加，不覆盖旧记录。
+- 如果是 merge commit，`变更文件` 可写“由 merge 产生，见对应 diff”。
+- 若本次未执行测试，明确标注“未执行 + 原因”。
