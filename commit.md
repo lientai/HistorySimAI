@@ -186,8 +186,8 @@
   - Root：`npm --prefix ChongzhenSim test --silent` 通过（98/98）
   - Server：`npm --prefix ChongzhenSim/server test --silent` 通过（49/49）
 
-#### 6.1.5 <待生成> · feat(court): switch appointment to inline text panel
-- 全哈希：提交后由 `git log -1` 回填
+#### 6.1.5 c98d33c · feat(court): switch appointment to inline text panel
+- 全哈希：`c98d33cc6d2a2378861f5dd9fb461001d060b36e`
 - 时间：2026-03-18
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
