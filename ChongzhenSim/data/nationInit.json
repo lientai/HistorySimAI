@@ -7,14 +7,14 @@
   "disasterLevel": 70,
   "corruptionLevel": 80,
   "provinces": [
-    { "name": "北直隶", "status": "京师所在，粮价飞涨，流民涌入", "threat": "medium" },
-    { "name": "陕西", "status": "旱灾严重，农民军蛰伏待起", "threat": "high" },
-    { "name": "山东", "status": "登州兵变隐患，孔有德部欠饷", "threat": "high" },
-    { "name": "辽东", "status": "后金虎视眈眈，关宁防线承压", "threat": "critical" },
-    { "name": "河南", "status": "灾荒蔓延，流民四散", "threat": "high" },
-    { "name": "江南", "status": "赋税重镇，漕运受阻", "threat": "medium" },
-    { "name": "四川", "status": "相对安定，但土司不稳", "threat": "low" },
-    { "name": "湖广", "status": "粮仓要地，尚且平稳", "threat": "low" }
+    { "name": "北直隶", "status": "京师所在，粮价飞涨，流民涌入", "threat": "medium", "taxSilver": 8000, "taxGrain": 6000, "recruits": 8000, "morale": 40, "corruption": 70, "disaster": 60 },
+    { "name": "陕西", "status": "旱灾严重，农民军蛰伏待起", "threat": "high", "taxSilver": 3000, "taxGrain": 2000, "recruits": 5000, "morale": 30, "corruption": 75, "disaster": 80 },
+    { "name": "山东", "status": "登州兵变隐患，孔有德部欠饷", "threat": "high", "taxSilver": 4000, "taxGrain": 2500, "recruits": 6000, "morale": 35, "corruption": 80, "disaster": 65 },
+    { "name": "辽东", "status": "后金虎视眈眈，关宁防线承压", "threat": "critical", "taxSilver": 2000, "taxGrain": 1500, "recruits": 9000, "morale": 45, "corruption": 60, "disaster": 55 },
+    { "name": "河南", "status": "灾荒蔓延，流民四散", "threat": "high", "taxSilver": 2500, "taxGrain": 2200, "recruits": 4000, "morale": 32, "corruption": 78, "disaster": 75 },
+    { "name": "江南", "status": "赋税重镇，漕运受阻", "threat": "medium", "taxSilver": 12000, "taxGrain": 8000, "recruits": 7000, "morale": 55, "corruption": 65, "disaster": 50 },
+    { "name": "四川", "status": "相对安定，但土司不稳", "threat": "low", "taxSilver": 3500, "taxGrain": 3000, "recruits": 5000, "morale": 50, "corruption": 55, "disaster": 45 },
+    { "name": "湖广", "status": "粮仓要地，尚且平稳", "threat": "low", "taxSilver": 4500, "taxGrain": 7000, "recruits": 5500, "morale": 52, "corruption": 50, "disaster": 40 }
   ],
   "externalThreats": [
     { "name": "后金(清)", "leader": "皇太极", "status": "整军经武，蒙古归附", "level": "critical" },

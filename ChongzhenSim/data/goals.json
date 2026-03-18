@@ -4,5 +4,6 @@
   { "id": "morale_60", "title": "安抚民心——将民心指数提升至60以上" },
   { "id": "loyalty_all_50", "title": "稳固朝堂——所有大臣忠诚度达到50以上" },
   { "id": "border_down", "title": "御敌于外——将边患威胁降至50以下" },
-  { "id": "talk_all", "title": "兼听则明——与所有大臣进行过朝堂议事" }
+  { "id": "talk_all", "title": "兼听则明——与所有大臣进行过朝堂议事" },
+  { "id": "eliminate_external", "title": "扫清外患——消灭所有外部势力" }
 ]

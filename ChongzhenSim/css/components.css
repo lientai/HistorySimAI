@@ -1190,6 +1190,62 @@
   color: var(--color-text-main);
 }
 
+/* 省级属性标签 */
+.province-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.province-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.province-tag--income {
+  color: #8b5a00;
+  background-color: rgba(255, 215, 0, 0.16);
+}
+
+.province-tag--military {
+  color: #0b4f9c;
+  background-color: rgba(30, 144, 255, 0.16);
+}
+
+.province-tag--morale {
+  color: #0f6b3a;
+  background-color: rgba(56, 176, 0, 0.16);
+}
+
+.province-tag--corruption {
+  color: #a65a00;
+  background-color: rgba(255, 140, 0, 0.16);
+}
+
+.province-tag--disaster {
+  color: #6a1b9a;
+  background-color: rgba(123, 31, 162, 0.16);
+}
+
+.province-tag--good {
+  border: 1px solid rgba(0, 150, 0, 0.5);
+}
+
+.province-tag--neutral {
+  opacity: 0.9;
+}
+
+.province-tag--bad {
+  border: 1px solid rgba(200, 0, 0, 0.5);
+  font-weight: 600;
+}
+
 .nation-card-title {
   font-size: 13px;
   font-weight: 600;

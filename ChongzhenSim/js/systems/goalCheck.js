@@ -27,6 +27,13 @@ export function checkGoalCompleted(goalId, state) {
       return ministers.every((m) => Array.isArray(chats[m.id]) && chats[m.id].length > 0);
     }
 
+    case "eliminate_external": {
+      const external = state.externalPowers || {};
+      const values = Object.values(external);
+      if (values.length === 0) return false;
+      return values.every((v) => (v || 0) <= 0);
+    }
+
     default:
       return false;
   }

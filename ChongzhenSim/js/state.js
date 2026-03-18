@@ -37,6 +37,11 @@ const initialState = {
     "dutcheng_duchayuan_zuoduyushi": "caoyubian"
   },
   characterStatus: {},
+  // 外部势力势力值（如 { "后金(清)": 100, "农民军": 80 }）
+  externalPowers: {},
+
+  // 省级经济与民生数据快照（按省名索引）
+  provinceStats: {},
 
   lastChoiceId: null,
   lastChoiceText: null,
