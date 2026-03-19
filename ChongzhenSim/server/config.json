@@ -1,7 +1,0 @@
-{
-  "LLM_API_KEY": "sk-2498b2c4f938478aa2404aee669d020f",
-  "LLM_API_BASE": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  "LLM_MODEL": "qwen-long",
-  "LLM_CHAT_MODEL": "qwen-long",
-  "PORT": 3002
-}

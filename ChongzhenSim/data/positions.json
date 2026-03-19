@@ -1,89 +1,153 @@
 {
-  "schemaVersion": 1,
-  "departments": [
+  "schemaVersion": 2,
+  "modules": [
     {
       "id": "neige",
       "name": "内阁",
       "description": "皇帝的决策咨询机构，辅佐皇帝处理政务",
-      "color": "#8B0000"
+      "color": "#8B0000",
+      "order": 1,
+      "departments": ["neige"]
     },
     {
-      "id": "libu",
-      "name": "吏部",
-      "description": "掌天下官吏选授、封勋、考课之政令",
-      "color": "#1565c0"
+      "id": "liubu",
+      "name": "六部",
+      "description": "中央行政六部：吏、户、礼、兵、刑、工",
+      "color": "#1565c0",
+      "order": 2,
+      "departments": ["libu", "hubu", "libu_li", "bingbu", "xingbu", "gongbu"]
     },
     {
-      "id": "hubu",
-      "name": "户部",
-      "description": "掌天下土地、人民、钱谷之政令",
-      "color": "#2e7d32"
-    },
-    {
-      "id": "libu_li",
-      "name": "礼部",
-      "description": "掌礼仪、祭祀、贡举之政令",
-      "color": "#6a1b9a"
-    },
-    {
-      "id": "bingbu",
-      "name": "兵部",
-      "description": "掌天下武卫官军选授、简练之政令",
-      "color": "#e65100"
-    },
-    {
-      "id": "xingbu",
-      "name": "刑部",
-      "description": "掌天下刑名及徒隶、勾覆、关禁之政令",
-      "color": "#c62828"
-    },
-    {
-      "id": "gongbu",
-      "name": "工部",
-      "description": "掌天下百工、屯田、山泽之政令",
-      "color": "#4527a0"
-    },
-    {
-      "id": "dutcheng",
-      "name": "都察院",
-      "description": "掌纠察百司、提督各道、为天子耳目风纪之司",
-      "color": "#00695c"
-    },
-    {
-      "id": "dali_si",
-      "name": "大理寺",
-      "description": "掌复核刑狱，与刑部、都察院并称三法司",
-      "color": "#ad1457"
-    },
-    {
-      "id": "tongzheng_si",
-      "name": "通政司",
-      "description": "掌受内外章疏敷奏封驳之事",
-      "color": "#4a148c"
-    },
-    {
-      "id": "shuntian_fu",
-      "name": "顺天府",
-      "description": "掌京畿地方政务",
-      "color": "#37474f"
-    },
-    {
-      "id": "local",
-      "name": "地方督抚",
-      "description": "总督、巡抚等地方大员",
-      "color": "#5d4037"
-    },
-    {
-      "id": "military",
-      "name": "军事将领",
-      "description": "总兵、副将等军事指挥官",
-      "color": "#bf360c"
+      "id": "fasisi",
+      "name": "法司",
+      "description": "三法司：都察院、大理寺、通政司",
+      "color": "#00695c",
+      "order": 3,
+      "departments": ["dutcheng", "dali_si", "tongzheng_si"]
     },
     {
       "id": "neiting",
       "name": "内廷",
-      "description": "司礼监等内廷机构",
-      "color": "#4a148c"
+      "description": "司礼监、东厂、锦衣卫等内廷机构",
+      "color": "#4a148c",
+      "order": 4,
+      "departments": ["neiting"]
+    },
+    {
+      "id": "difang",
+      "name": "地方",
+      "description": "总督、巡抚、顺天府等地方大员",
+      "color": "#5d4037",
+      "order": 5,
+      "departments": ["local", "shuntian_fu"]
+    },
+    {
+      "id": "junshi",
+      "name": "军事",
+      "description": "总兵、副将等军事指挥官",
+      "color": "#bf360c",
+      "order": 6,
+      "departments": ["military"]
+    }
+  ],
+  "departments": [
+    {
+      "id": "neige",
+      "name": "内阁",
+      "moduleId": "neige",
+      "color": "#8B0000",
+      "description": "皇帝的决策咨询机构，辅佐皇帝处理政务"
+    },
+    {
+      "id": "libu",
+      "name": "吏部",
+      "moduleId": "liubu",
+      "color": "#1565c0",
+      "description": "掌天下官吏选授、封勋、考课之政令"
+    },
+    {
+      "id": "hubu",
+      "name": "户部",
+      "moduleId": "liubu",
+      "color": "#2e7d32",
+      "description": "掌天下土地、人民、钱谷之政令"
+    },
+    {
+      "id": "libu_li",
+      "name": "礼部",
+      "moduleId": "liubu",
+      "color": "#6a1b9a",
+      "description": "掌礼仪、祭祀、贡举之政令"
+    },
+    {
+      "id": "bingbu",
+      "name": "兵部",
+      "moduleId": "liubu",
+      "color": "#e65100",
+      "description": "掌天下武卫官军选授、简练之政令"
+    },
+    {
+      "id": "xingbu",
+      "name": "刑部",
+      "moduleId": "liubu",
+      "color": "#c62828",
+      "description": "掌天下刑名及徒隶、勾覆、关禁之政令"
+    },
+    {
+      "id": "gongbu",
+      "name": "工部",
+      "moduleId": "liubu",
+      "color": "#4527a0",
+      "description": "掌天下百工、屯田、山泽之政令"
+    },
+    {
+      "id": "dutcheng",
+      "name": "都察院",
+      "moduleId": "fasisi",
+      "color": "#00695c",
+      "description": "掌纠察百司、提督各道、为天子耳目风纪之司"
+    },
+    {
+      "id": "dali_si",
+      "name": "大理寺",
+      "moduleId": "fasisi",
+      "color": "#ad1457",
+      "description": "掌复核刑狱，与刑部、都察院并称三法司"
+    },
+    {
+      "id": "tongzheng_si",
+      "name": "通政司",
+      "moduleId": "fasisi",
+      "color": "#4a148c",
+      "description": "掌受内外章疏敷奏封驳之事"
+    },
+    {
+      "id": "neiting",
+      "name": "内廷",
+      "moduleId": "neiting",
+      "color": "#4a148c",
+      "description": "司礼监、东厂、锦衣卫等内廷机构"
+    },
+    {
+      "id": "local",
+      "name": "地方督抚",
+      "moduleId": "difang",
+      "color": "#5d4037",
+      "description": "总督、巡抚等地方大员"
+    },
+    {
+      "id": "shuntian_fu",
+      "name": "顺天府",
+      "moduleId": "difang",
+      "color": "#37474f",
+      "description": "掌京畿地方政务"
+    },
+    {
+      "id": "military",
+      "name": "军事将领",
+      "moduleId": "junshi",
+      "color": "#bf360c",
+      "description": "总兵、副将等军事指挥官"
     }
   ],
   "ranks": [
@@ -111,8 +175,7 @@
       "grade": "正一品",
       "description": "内阁之首，辅佐皇帝处理政务，票拟批答",
       "maxHolders": 1,
-      "importance": 10,
-      "defaultHolder": "wen_tiren"
+      "importance": 10
     },
     {
       "id": "neige_cifu",
@@ -122,8 +185,7 @@
       "grade": "从一品",
       "description": "内阁次席，协助首辅处理政务",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": null
+      "importance": 9
     },
     {
       "id": "neige_daxueshi",
@@ -133,8 +195,7 @@
       "grade": "从一品",
       "description": "内阁成员，参与机务",
       "maxHolders": 4,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "libu_shangshu",
@@ -144,8 +205,7 @@
       "grade": "正二品",
       "description": "掌天下官吏选授、封勋、考课之政令，六部之首",
       "maxHolders": 1,
-      "importance": 10,
-      "defaultHolder": "wang_yongguang"
+      "importance": 10
     },
     {
       "id": "libu_shilang_zuo",
@@ -155,8 +215,7 @@
       "grade": "正三品",
       "description": "吏部副长官，协助尚书处理部务",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "libu_shilang_you",
@@ -166,8 +225,7 @@
       "grade": "正三品",
       "description": "吏部副长官，协助尚书处理部务",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "hubu_shangshu",
@@ -177,8 +235,7 @@
       "grade": "正二品",
       "description": "掌天下土地、人民、钱谷之政令",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": "bi_ziyan"
+      "importance": 9
     },
     {
       "id": "hubu_shilang_zuo",
@@ -188,8 +245,7 @@
       "grade": "正三品",
       "description": "户部副长官，协助尚书处理部务",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "hubu_shilang_you",
@@ -199,8 +255,7 @@
       "grade": "正三品",
       "description": "户部副长官，协助尚书处理部务",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "libu_li_shangshu",
@@ -210,8 +265,7 @@
       "grade": "正二品",
       "description": "掌礼仪、祭祀、贡举之政令",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": "lin_qian"
+      "importance": 7
     },
     {
       "id": "libu_li_shilang_zuo",
@@ -221,8 +275,7 @@
       "grade": "正三品",
       "description": "礼部副长官",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "libu_li_shilang_you",
@@ -232,8 +285,7 @@
       "grade": "正三品",
       "description": "礼部副长官",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "bingbu_shangshu",
@@ -243,8 +295,7 @@
       "grade": "正二品",
       "description": "掌天下武卫官军选授、简练之政令",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": "sun_chengzong"
+      "importance": 9
     },
     {
       "id": "bingbu_shilang_zuo",
@@ -254,8 +305,7 @@
       "grade": "正三品",
       "description": "兵部副长官",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "bingbu_shilang_you",
@@ -265,8 +315,7 @@
       "grade": "正三品",
       "description": "兵部副长官",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": "liang_tingdong"
+      "importance": 7
     },
     {
       "id": "xingbu_shangshu",
@@ -276,8 +325,7 @@
       "grade": "正二品",
       "description": "掌天下刑名及徒隶、勾覆、关禁之政令",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": "han_jisi"
+      "importance": 8
     },
     {
       "id": "xingbu_shilang_zuo",
@@ -287,8 +335,7 @@
       "grade": "正三品",
       "description": "刑部副长官",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "xingbu_shilang_you",
@@ -298,8 +345,7 @@
       "grade": "正三品",
       "description": "刑部副长官",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "gongbu_shangshu",
@@ -309,8 +355,7 @@
       "grade": "正二品",
       "description": "掌天下百工、屯田、山泽之政令",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": "zhang_fengxiang"
+      "importance": 6
     },
     {
       "id": "gongbu_shilang_zuo",
@@ -320,8 +365,7 @@
       "grade": "正三品",
       "description": "工部副长官",
       "maxHolders": 1,
-      "importance": 5,
-      "defaultHolder": null
+      "importance": 5
     },
     {
       "id": "gongbu_shilang_you",
@@ -331,8 +375,7 @@
       "grade": "正三品",
       "description": "工部副长官",
       "maxHolders": 1,
-      "importance": 5,
-      "defaultHolder": null
+      "importance": 5
     },
     {
       "id": "dutcheng_duchayuan_zuoduyushi",
@@ -342,8 +385,7 @@
       "grade": "正二品",
       "description": "都察院长官，掌纠察百司",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "dutcheng_duchayuan_yuoduyushi",
@@ -353,8 +395,7 @@
       "grade": "正二品",
       "description": "都察院副长官",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "dali_si_qing",
@@ -364,8 +405,7 @@
       "grade": "正三品",
       "description": "大理寺长官，掌复核刑狱",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "tongzheng_si_shi",
@@ -375,8 +415,7 @@
       "grade": "正三品",
       "description": "通政司长官，掌受内外章疏",
       "maxHolders": 1,
-      "importance": 5,
-      "defaultHolder": null
+      "importance": 5
     },
     {
       "id": "shuntian_fu_yin",
@@ -386,8 +425,7 @@
       "grade": "正三品",
       "description": "掌京畿地方政务",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "jiliao_dushi",
@@ -397,8 +435,7 @@
       "grade": "正二品",
       "description": "督师蓟辽，统筹辽东军务",
       "maxHolders": 1,
-      "importance": 10,
-      "defaultHolder": null
+      "importance": 10
     },
     {
       "id": "xuanda_zongdu",
@@ -408,8 +445,7 @@
       "grade": "正二品",
       "description": "总督宣府、大同军务",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "sanbian_zongdu",
@@ -419,8 +455,7 @@
       "grade": "正二品",
       "description": "总督陕西三边军务，围剿农民军",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": "hong_chengchou"
+      "importance": 9
     },
     {
       "id": "shanxi_xunfu",
@@ -430,8 +465,7 @@
       "grade": "从二品",
       "description": "巡抚陕西，协助总督围剿农民军",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     },
     {
       "id": "henan_xunfu",
@@ -441,8 +475,7 @@
       "grade": "从二品",
       "description": "巡抚河南",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "shandong_xunfu",
@@ -452,8 +485,7 @@
       "grade": "从二品",
       "description": "巡抚山东",
       "maxHolders": 1,
-      "importance": 6,
-      "defaultHolder": null
+      "importance": 6
     },
     {
       "id": "liaodong_zongbing",
@@ -463,8 +495,7 @@
       "grade": "正二品",
       "description": "辽东军事指挥官",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": null
+      "importance": 9
     },
     {
       "id": "ningyuan_zongbing",
@@ -474,8 +505,7 @@
       "grade": "正二品",
       "description": "宁远军事指挥官",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "shanxi_zongbing",
@@ -485,8 +515,7 @@
       "grade": "正二品",
       "description": "陕西军事指挥官",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "siliji_bingbi_taijian",
@@ -496,8 +525,7 @@
       "grade": "正一品",
       "description": "司礼监核心成员，代皇帝批红",
       "maxHolders": 2,
-      "importance": 8,
-      "defaultHolder": "cao_huachun"
+      "importance": 8
     },
     {
       "id": "siliji_zhangyin_taijian",
@@ -507,8 +535,7 @@
       "grade": "正一品",
       "description": "司礼监之首，掌管印信",
       "maxHolders": 1,
-      "importance": 9,
-      "defaultHolder": null
+      "importance": 9
     },
     {
       "id": "dongchang_tijian",
@@ -518,8 +545,7 @@
       "grade": "从一品",
       "description": "东厂长官，掌侦缉刑狱",
       "maxHolders": 1,
-      "importance": 8,
-      "defaultHolder": null
+      "importance": 8
     },
     {
       "id": "jin_yiwei_zhihui",
@@ -529,8 +555,7 @@
       "grade": "正三品",
       "description": "锦衣卫长官，掌侍卫、缉捕、刑狱",
       "maxHolders": 1,
-      "importance": 7,
-      "defaultHolder": null
+      "importance": 7
     }
   ]
 }

@@ -1,0 +1,550 @@
+/* ===== 国家模块样式 ===== */
+
+/* 国家视图容器 */
+.nation-view {
+  padding: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.nation-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 国家概览 */
+.nation-overview {
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.95) 0%, rgba(250, 245, 235, 0.9) 100%);
+  border: 1px solid rgba(180, 150, 100, 0.15);
+}
+
+.nation-overview-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+
+/* 国家头部 */
+.nation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(180, 150, 100, 0.2);
+}
+
+.nation-header__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-heading-main);
+}
+
+.nation-header__date {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+/* 数值统计 */
+.nation-stats-card {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.nation-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.nation-stat-item {
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nation-stat-label {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  margin-bottom: 4px;
+}
+
+.nation-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.nation-stat-value--positive { color: #2e7d32; }
+.nation-stat-value--negative { color: #c62828; }
+.nation-stat-value--warning { color: #e65100; }
+
+.nation-stat-bar {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.nation-stat-bar-inner {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.nation-stat-bar-inner--good { background: #4caf50; }
+.nation-stat-bar-inner--warning { background: #ff9800; }
+.nation-stat-bar-inner--danger { background: #f44336; }
+.nation-stat-bar-inner--neutral { background: #9e9e9e; }
+
+/* 卡片组件 */
+.nation-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(180, 150, 100, 0.15);
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
+}
+
+.nation-card:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(180, 150, 100, 0.25);
+}
+
+.nation-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(139, 0, 0, 0.1) 0%, rgba(139, 0, 0, 0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.nation-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.nation-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.nation-card-summary {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  line-height: 1.5;
+}
+
+.nation-card-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.nation-card-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.nation-card-tag--urgent {
+  background: rgba(198, 40, 40, 0.15);
+  color: #c62828;
+}
+
+.nation-card-tag--important {
+  background: rgba(230, 81, 0, 0.15);
+  color: #e65100;
+}
+
+.nation-card-tag--normal {
+  background: rgba(180, 150, 100, 0.15);
+  color: #8b5a2b;
+}
+
+/* 折叠组件 */
+.fold-section {
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(180, 150, 100, 0.15);
+  overflow: hidden;
+}
+
+.fold-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.fold-header:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.fold-arrow {
+  font-size: 10px;
+  color: #a08060;
+  transition: transform 0.2s ease;
+}
+
+.fold-section--open .fold-arrow {
+  transform: rotate(90deg);
+}
+
+.fold-body {
+  padding: 0 12px 10px;
+  display: none;
+}
+
+.fold-section--open .fold-body {
+  display: block;
+}
+
+/* Feed 信息流 */
+.nation-feed {
+  margin-top: 8px;
+}
+
+.nation-feed-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(180, 150, 100, 0.2);
+}
+
+.nation-feed-empty {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  text-align: center;
+  padding: 20px;
+}
+
+/* 民间舆论 */
+.nation-opinions {
+  margin-top: 8px;
+}
+
+.nation-opinions-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(180, 150, 100, 0.2);
+}
+
+.nation-opinion-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  margin-bottom: 6px;
+}
+
+.nation-opinion-user {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.nation-opinion-user--loyal { color: #2e7d32; }
+.nation-opinion-user--angry { color: #c62828; }
+.nation-opinion-user--neutral { color: var(--color-text-sub); }
+
+.nation-opinion-text {
+  font-size: 12px;
+  color: var(--color-text-main);
+  line-height: 1.5;
+}
+
+/* 省份详情 */
+.province-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.province-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.province-tag--income { background: rgba(46, 125, 50, 0.15); color: #2e7d32; }
+.province-tag--military { background: rgba(21, 101, 192, 0.15); color: #1565c0; }
+.province-tag--morale { background: rgba(230, 81, 0, 0.15); color: #e65100; }
+.province-tag--corruption { background: rgba(198, 40, 40, 0.15); color: #c62828; }
+.province-tag--disaster { background: rgba(106, 27, 154, 0.15); color: #6a1b9a; }
+
+.province-tag--good { background: rgba(76, 175, 80, 0.15); color: #4caf50; }
+.province-tag--bad { background: rgba(244, 67, 54, 0.15); color: #f44336; }
+.province-tag--neutral { background: rgba(158, 158, 158, 0.15); color: #757575; }
+
+/* 省份区块 */
+.nation-provinces-section {
+  margin-top: 8px;
+}
+
+.nation-provinces-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.nation-provinces-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-provinces-count {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.nation-provinces-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nation-province-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.nation-province-item__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-province-item__status {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+/* 势力区块 */
+.nation-factions-section {
+  margin-top: 8px;
+}
+
+.nation-factions-header {
+  margin-bottom: 8px;
+}
+
+.nation-factions-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-factions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.nation-faction-card {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.nation-faction-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.nation-faction-card__power {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  margin-bottom: 4px;
+}
+
+.nation-faction-card__bar {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.nation-faction-card__bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+/* 敌对区块 */
+.nation-enemies-section {
+  margin-top: 8px;
+}
+
+.nation-enemies-header {
+  margin-bottom: 8px;
+}
+
+.nation-enemies-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-enemies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nation-enemy-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.nation-enemy-item__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-enemy-item__threat {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.nation-enemy-item__threat--high {
+  background: rgba(198, 40, 40, 0.15);
+  color: #c62828;
+}
+
+/* 国策区块 */
+.nation-policy-section {
+  margin-top: 8px;
+}
+
+.nation-policy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.nation-policy-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.nation-policy-points {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.nation-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.nation-policy-card {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(180, 150, 100, 0.15);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nation-policy-card:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nation-policy-card--active {
+  border-color: var(--color-accent);
+  background: rgba(139, 0, 0, 0.05);
+}
+
+.nation-policy-card--locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nation-policy-card__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.nation-policy-card__desc {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  line-height: 1.4;
+}
+
+.nation-policy-card__cost {
+  font-size: 10px;
+  color: var(--color-accent);
+  margin-top: 4px;
+}
+
+/* 迷你按钮 */
+.nation-mini-btn {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fffaf0;
+  color: var(--color-text-main);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nation-mini-btn:hover:not(.nation-mini-btn--disabled) {
+  background: #e9dac1;
+  border-color: var(--color-accent);
+}
+
+.nation-mini-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
