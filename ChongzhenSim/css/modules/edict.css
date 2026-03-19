@@ -1,0 +1,860 @@
+/* ===== 诏书模块样式 ===== */
+
+/* 开始界面 */
+.start-intro-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  padding: 24px 20px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.start-intro-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: 20px;
+  letter-spacing: 6px;
+  text-shadow: 0 2px 4px rgba(139, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.start-intro-block {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 16px;
+  max-width: 340px;
+  width: 100%;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 150, 100, 0.3) transparent;
+}
+
+.start-intro-block::-webkit-scrollbar {
+  width: 4px;
+}
+
+.start-intro-block::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.start-intro-block::-webkit-scrollbar-thumb {
+  background: rgba(180, 150, 100, 0.3);
+  border-radius: 2px;
+}
+
+.start-intro-actions {
+  width: 100%;
+  max-width: 280px;
+  flex-shrink: 0;
+}
+
+.start-view-btn {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 2px;
+}
+
+.start-view-btn--primary {
+  background: linear-gradient(135deg, #8B0000 0%, #a52a2a 100%);
+  border: 2px solid #8B0000;
+  color: #f5e6c8;
+  box-shadow: 0 4px 12px rgba(139, 0, 0, 0.3);
+}
+
+.start-view-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a52a2a 0%, #8B0000 100%);
+  box-shadow: 0 6px 16px rgba(139, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.start-view-btn--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(139, 0, 0, 0.3);
+}
+
+.start-view-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.start-intro-line {
+  display: block;
+  line-height: 2;
+  font-size: 14px;
+}
+
+.start-intro-line--c0 { color: var(--color-text-main); }
+.start-intro-line--c1 { color: var(--color-accent); font-weight: 600; }
+.start-intro-line--c2 { color: var(--color-text-sub); }
+.start-intro-line--c3 { color: #5a3a27; }
+.start-intro-line--c4 { color: #8b5a2b; }
+
+/* 剧情文本 */
+.pseudo-line {
+  margin-bottom: 2px;
+}
+
+.pseudo-line--heading {
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.pseudo-heading {
+  font-weight: 700;
+  color: var(--color-heading-main);
+}
+
+.pseudo-heading--meta {
+  color: var(--color-heading-sub);
+}
+
+.pseudo-heading--story {
+  color: var(--color-accent);
+}
+
+.pseudo-line-text {
+  display: inline;
+}
+
+.story-minister-name {
+  font-weight: bold;
+}
+
+.pseudo-line--dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.story-dialog-avatars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.story-dialog-avatar {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #bfaf90 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-accent);
+  overflow: hidden;
+}
+
+.story-dialog-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.story-dialog-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.story-history-label {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.story-history-label:first-child {
+  margin-top: 0;
+}
+
+.story-current-label {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.story-choice-history {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  margin-top: 6px;
+  margin-bottom: 4px;
+  padding-left: 8px;
+  border-left: 2px solid var(--color-accent-soft);
+}
+
+.story-choice-history__label {
+  margin-right: 4px;
+}
+
+.story-choice-history__hint {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-sub);
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+/* 加载动画 */
+.story-loading {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-sub);
+}
+
+.story-loading__char {
+  display: inline-block;
+  font-weight: 600;
+  opacity: 0;
+  animation: story-loading-wave 1.2s ease-in-out infinite;
+}
+
+@keyframes story-loading-wave {
+  0% { opacity: 0; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+  70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* 数值变化卡片 */
+.story-delta-card {
+  background: linear-gradient(135deg, #faf6ef 0%, #f0e8d8 100%);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.story-delta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.story-delta-label {
+  color: var(--color-text-sub);
+  font-weight: 600;
+}
+
+.story-delta-value {
+  font-weight: 700;
+}
+
+.story-delta-value--positive {
+  color: var(--color-success);
+}
+
+.story-delta-value--negative {
+  color: var(--color-danger);
+}
+
+.story-delta-value--appointment {
+  color: var(--color-accent);
+  font-size: 12px;
+}
+
+/* 用户高亮 */
+.story-user-highlight {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  text-decoration-color: #8d572c;
+  background: rgba(216, 185, 142, 0.2);
+  border-radius: 2px;
+}
+
+.story-highlight-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.story-highlight-toolbar__btn {
+  border: 1px solid var(--color-border-soft);
+  background: #fffdf8;
+  color: var(--color-text-main);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.story-highlight-toolbar__hint {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.story-highlight-toolbar__hint--error {
+  color: var(--color-danger);
+}
+
+.story-highlight-panel {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f9f4e9 0%, #f3ead8 100%);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.story-highlight-panel__header {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-align: left;
+}
+
+.story-highlight-panel__arrow {
+  font-size: 10px;
+  color: var(--color-text-sub);
+  transition: transform 0.2s ease;
+}
+
+.story-highlight-panel--open .story-highlight-panel__arrow {
+  transform: rotate(90deg);
+}
+
+.story-highlight-panel__body {
+  display: none;
+  padding: 0 10px 10px;
+}
+
+.story-highlight-panel--open .story-highlight-panel__body {
+  display: block;
+}
+
+.story-highlight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.story-highlight-list__empty {
+  font-size: 11px;
+  color: var(--color-text-sub);
+  padding-top: 4px;
+}
+
+.story-highlight-item {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.story-highlight-item__text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-main);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.story-highlight-item__meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.story-highlight-item__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+.story-highlight-item__delete-btn {
+  border: 1px solid var(--color-border-soft);
+  background: rgba(255, 200, 200, 0.4);
+  color: var(--color-danger);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.story-highlight-item__delete-btn:hover {
+  background: rgba(255, 150, 150, 0.5);
+}
+
+.story-highlight-list__clear-all-btn {
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  background: linear-gradient(135deg, #f5e6e3 0%, #f0d8d5 100%);
+  color: var(--color-danger);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+/* 季度议程 */
+.quarter-agenda-panel {
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  background: linear-gradient(180deg, #f7f0e1 0%, #f1e7d4 100%);
+}
+
+.quarter-agenda-panel__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.quarter-agenda-panel__subtitle,
+.quarter-agenda-panel__footer,
+.quarter-agenda-control__label,
+.quarter-agenda-card__meta,
+.custom-edict-panel__context {
+  font-size: 11px;
+  color: var(--color-text-sub);
+}
+
+.quarter-agenda-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.quarter-agenda-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 8px 10px;
+}
+
+.quarter-agenda-card--active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px rgba(141, 87, 44, 0.2);
+}
+
+.quarter-agenda-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.quarter-agenda-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.quarter-agenda-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.quarter-agenda-card__badge--urgent {
+  color: #8e1f1f;
+  background: #f8dfdf;
+  border-color: #e9bcbc;
+}
+
+.quarter-agenda-card__badge--important {
+  color: #7a4f20;
+  background: #f5ead7;
+  border-color: #dfc7a4;
+}
+
+.quarter-agenda-card__badge--normal {
+  color: #2f5a3e;
+  background: #e2f0e5;
+  border-color: #bdd8c6;
+}
+
+.quarter-agenda-card__summary {
+  font-size: 12px;
+  color: var(--color-text-main);
+  line-height: 1.5;
+}
+
+.quarter-agenda-control {
+  margin-top: 8px;
+}
+
+.quarter-agenda-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.quarter-agenda-chip {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fffaf0;
+  color: var(--color-text-main);
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.quarter-agenda-chip--active {
+  background: #e9dac1;
+  border-color: var(--color-accent);
+}
+
+/* 弹幕层 */
+.edict-danmu-layer {
+  position: sticky;
+  top: 0;
+  height: 96px;
+  margin: -10px -12px 8px;
+  width: calc(100% + 24px);
+  box-sizing: border-box;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+  background: transparent;
+}
+
+.edict-danmu-item {
+  position: absolute;
+  left: 0;
+  right: auto;
+  white-space: nowrap;
+  font-size: 12px;
+  animation: edict-danmu-move 12s linear forwards;
+}
+
+.edict-danmu-item span {
+  background: rgba(80, 80, 80, 0.9);
+  color: #f5f0e8;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.edict-danmu-item--loyal span {
+  color: #c8e6c9;
+}
+
+.edict-danmu-item--angry span {
+  color: #ffcdd2;
+}
+
+.edict-danmu-item--neutral span {
+  color: #f5f0e8;
+}
+
+@keyframes edict-danmu-move {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-120%);
+  }
+}
+
+/* 奏折速报浮动面板 */
+.edict-panels-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.edict-float-panel {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  background: var(--color-block-bg);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  transition: height 0.2s ease;
+  opacity: 0.92;
+}
+
+.edict-float-panel--news {
+  top: auto;
+  bottom: 60px;
+  height: calc((100vh - 116px) / 4);
+  max-height: 200px;
+}
+
+.edict-float-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border-soft);
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.edict-float-panel__toggle {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--color-text-sub);
+  background: none;
+  border: none;
+}
+
+.edict-float-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 10px;
+}
+
+.edict-float-panel--collapsed {
+  height: 0;
+  min-height: 0;
+  bottom: auto;
+}
+
+.edict-float-panel--collapsed .edict-float-panel__header,
+.edict-float-panel--collapsed .edict-float-panel__body {
+  display: none;
+}
+
+.edict-float-panel--news.edict-float-panel--collapsed {
+  top: auto;
+  bottom: 60px;
+  height: 0;
+}
+
+.news-fab-toggle {
+  position: absolute;
+  right: 16px;
+  bottom: 122px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--color-accent);
+  color: var(--color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  z-index: 6;
+}
+
+.news-fab-toggle:active {
+  transform: scale(0.96);
+}
+
+.news-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.news-item:last-child {
+  border-bottom: none;
+}
+
+.news-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  display: inline-block;
+}
+
+.news-tag--urgent {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.news-tag--important {
+  background: var(--color-warning);
+  color: #fff;
+}
+
+.news-tag--normal {
+  background: var(--color-border-soft);
+  color: var(--color-text-main);
+}
+
+.news-empty {
+  color: var(--color-text-sub);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* 自拟诏书面板 */
+.story-action-btn--custom {
+  border: 1.5px dashed var(--color-gold);
+  background: transparent;
+  text-align: center;
+  color: var(--color-gold);
+}
+
+.story-action-btn--custom > div {
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.story-action-btn--custom > span {
+  color: var(--color-text-sub);
+}
+
+.custom-edict-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 16px;
+}
+
+.custom-edict-panel {
+  background: var(--color-block-bg);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.custom-edict-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.custom-edict-panel__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: 2px;
+}
+
+.custom-edict-panel__close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-text-sub);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.custom-edict-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-edict-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-heading-main);
+}
+
+.custom-edict-field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  background: var(--color-bg-main);
+  color: var(--color-text-main);
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.custom-edict-field textarea:focus {
+  outline: none;
+  border-color: var(--color-gold);
+}
+
+.custom-edict-submit {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: var(--color-gold);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.custom-edict-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.custom-edict-submit:not(:disabled):active {
+  opacity: 0.85;
+}
