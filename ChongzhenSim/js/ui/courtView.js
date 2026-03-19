@@ -141,6 +141,29 @@ function triggerTapFeedback() {
   navigator.vibrate(10);
 }
 
+function buildMinisterRoleMap(state) {
+  const roleMap = new Map();
+  const positions = positionsCache?.positions || [];
+  const appointments = state?.appointments || {};
+  if (!positions.length) return roleMap;
+
+  const positionById = new Map(positions.map((p) => [p.id, p]));
+  for (const [positionId, ministerId] of Object.entries(appointments)) {
+    if (!ministerId) continue;
+    const position = positionById.get(positionId);
+    if (!position?.name) continue;
+    roleMap.set(ministerId, position.name);
+  }
+  return roleMap;
+}
+
+function resolveMinisterRoleLabel(minister, roleMap) {
+  const dynamicRole = roleMap?.get(minister?.id);
+  if (dynamicRole) return dynamicRole;
+  const fallbackRole = (minister?.role && String(minister.role).trim()) || "";
+  return fallbackRole || "未任官职";
+}
+
 function createAvatarImg(name, fallbackChar) {
   const img = document.createElement("img");
   const displayName = getDisplayName(name);
@@ -461,6 +484,7 @@ function showFactionPanel(state) {
   const factions = factionsCache?.factions || [];
   const ministers = state.ministers || [];
   const loyalty = state.loyalty || {};
+  const roleMap = buildMinisterRoleMap(state);
 
   factions.forEach((f) => {
     const section = document.createElement("div");
@@ -485,11 +509,12 @@ function showFactionPanel(state) {
       const m = ministers.find((mi) => mi.id === mid);
       if (!m) return;
       const displayName = getDisplayName(m.name);
+      const roleLabel = resolveMinisterRoleLabel(m, roleMap);
       const row = document.createElement("div");
       row.className = "faction-panel-member-row";
       const nameLabel = document.createElement("span");
       nameLabel.className = "faction-panel-member-row__name";
-      nameLabel.textContent = `${displayName}（${m.role}）`;
+      nameLabel.textContent = `${displayName}（${roleLabel}）`;
       const lval = document.createElement("span");
       lval.className = "faction-panel-member-row__loyalty";
       lval.textContent = `忠诚: ${loyalty[mid] || 0}`;
@@ -525,6 +550,7 @@ function showFactionPanel(state) {
 
 function createMinisterListElement(state, tagsConfig, onSelectMinister) {
   const { ministers, loyalty } = state;
+  const roleMap = buildMinisterRoleMap(state);
   const list = document.createElement("div");
   list.className = "minister-list";
 
@@ -552,7 +578,7 @@ function createMinisterListElement(state, tagsConfig, onSelectMinister) {
 
     avatar.addEventListener("click", (e) => {
       e.stopPropagation();
-      showMinisterDetail(m, state, tagsConfig);
+      showMinisterDetail({ ...m, role: resolveMinisterRoleLabel(m, roleMap) }, state, tagsConfig);
     });
 
     const main = document.createElement("div");
@@ -563,7 +589,7 @@ function createMinisterListElement(state, tagsConfig, onSelectMinister) {
     nameLine.style.color = MINISTER_NAME_COLORS[index % MINISTER_NAME_COLORS.length];
     const roleLine = document.createElement("div");
     roleLine.className = "minister-role";
-    roleLine.textContent = m.role;
+    roleLine.textContent = resolveMinisterRoleLabel(m, roleMap);
 
     const factionTag = document.createElement("span");
     factionTag.className = "minister-faction-tag " + getFactionClass(m.faction);
@@ -1260,7 +1286,8 @@ function renderMinisterChat(container, state, tagsConfig, minister) {
   const title = document.createElement("div");
   title.className = "court-chat-title";
   const displayName = getDisplayName(minister.name);
-  title.textContent = `${displayName}（${minister.role}）`;
+  const roleMap = buildMinisterRoleMap(state);
+  title.textContent = `${displayName}（${resolveMinisterRoleLabel(minister, roleMap)}）`;
   header.appendChild(backBtn);
   header.appendChild(title);
   root.appendChild(header);
@@ -1287,7 +1314,9 @@ function renderMinisterChat(container, state, tagsConfig, minister) {
   };
 
   const rerenderThread = () => {
-    const latest = getState().courtChats?.[ministerId] || [];
+    const latestState = getState();
+    const latest = latestState.courtChats?.[ministerId] || [];
+    const latestRoleMap = buildMinisterRoleMap(latestState);
     thread.innerHTML = "";
     latest.forEach((msg) => {
       const row = document.createElement("div");
@@ -1303,7 +1332,10 @@ function renderMinisterChat(container, state, tagsConfig, minister) {
 
       const bubble = document.createElement("div");
       bubble.className = "chat-bubble " + (msg.from === "player" ? "chat-bubble--me" : "chat-bubble--minister");
-      bubble.textContent = msg.text;
+      const speakerLabel = msg.from === "player"
+        ? "皇帝·朱由检"
+        : `${resolveMinisterRoleLabel(minister, latestRoleMap)}·${displayName}`;
+      bubble.textContent = `${speakerLabel}：${msg.text || ""}`;
 
       if (msg.from === "player") {
         row.appendChild(bubble);
@@ -1628,6 +1660,13 @@ async function renderCourtView(container) {
       factionsCache = await loadJSON("data/factions.json");
     } catch (e) {
       factionsCache = { factions: [] };
+    }
+  }
+  if (!positionsCache) {
+    try {
+      positionsCache = await loadJSON("data/positions.json");
+    } catch (e) {
+      positionsCache = { positions: [], departments: [] };
     }
   }
 
