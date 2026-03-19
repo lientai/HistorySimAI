@@ -8,10 +8,6 @@ let overlayEl = null;
 export function showGoalPanel() {
   if (overlayEl) return;
 
-  const state = getState();
-  const goals = state.goals || [];
-  if (goals.length === 0) return;
-
   overlayEl = document.createElement("div");
   overlayEl.className = "goal-panel-overlay";
 
@@ -49,6 +45,15 @@ function renderGoalList(list) {
   list.innerHTML = "";
   const state = getState();
   const goals = state.goals || [];
+
+  if (!goals.length) {
+    const empty = document.createElement("div");
+    empty.className = "goal-panel-empty";
+    empty.textContent = "当前暂无可追踪目标。";
+    list.appendChild(empty);
+    return;
+  }
+
   let trackedId = state.trackedGoalId;
 
   if (trackedId && checkGoalCompleted(trackedId, state)) {
