@@ -1,5 +1,72 @@
 # 版本更新日志 v1.2
 
+## [v1.2.1] - 2026-03-20
+
+### 🔒 安全加固
+
+#### CORS 配置收紧
+- 从 `origin: true`（允许任意来源）改为白名单模式
+- 支持环境变量 `ALLOWED_ORIGINS` 配置允许的来源
+- 默认允许 localhost:8080/3000/3002 开发端口
+
+#### API 超时设置
+- 为所有 LLM API 调用添加 60 秒超时
+- 使用 `AbortController` 实现请求取消
+- 防止请求无限挂起
+
+### 🧹 代码去重
+
+#### 新建共享模块
+- 新增 `js/utils/sharedConstants.js` 统一管理共享常量
+- `AVAILABLE_AVATAR_NAMES` - 大臣头像名称集合
+- `PERCENT_KEYS` - 百分比数值键
+- `NATION_LABELS` - 国家数值标签
+- `INVERT_COLOR_KEYS` - 反色显示键
+- `buildNameById()` / `buildIdByName()` - ID/名称映射构建函数
+
+#### 消除重复代码
+- 移除 `storySystem.js`、`courtView.js`、`storyRenderer.js` 中的重复常量定义
+- 统一使用 `effectsProcessor.js` 的 `applyEffects` 函数
+- 统一 `nameById` 构建逻辑
+
+### 🧠 内存管理
+
+#### 事件管理器
+- 新增 `js/utils/eventManager.js` 统一管理事件监听器
+- `EventManager` 类支持自动清理
+- 使用 `AbortController` 管理事件监听器生命周期
+- 统一管理 `setTimeout` / `setInterval`
+
+### 🎨 UI 优化
+
+#### Toast 通知组件
+- 新增 `js/utils/toast.js` Toast 通知组件
+- 替换所有 `alert()` 原生弹窗为友好的 Toast 提示
+- 支持 success/error/warning/info 四种类型
+- 新增 Toast 相关 CSS 样式
+
+### 📁 文件变更
+
+| 文件 | 变更类型 |
+|------|----------|
+| `js/utils/sharedConstants.js` | 新增 |
+| `js/utils/eventManager.js` | 新增 |
+| `js/utils/toast.js` | 新增 |
+| `server/index.js` | 修改（安全加固） |
+| `js/systems/storySystem.js` | 修改（代码去重） |
+| `js/ui/courtView.js` | 修改（代码去重 + Toast） |
+| `js/utils/storyRenderer.js` | 修改（代码去重） |
+| `js/utils/effectsProcessor.js` | 修改（导入共享常量） |
+| `js/api/llmStory.js` | 修改（使用共享函数） |
+| `css/components/common.css` | 修改（新增 Toast 样式） |
+
+### 🧪 测试覆盖
+
+- 前端测试：103 个用例通过 ✅
+- 后端测试：50 个用例通过 ✅
+
+---
+
 ## [v1.2.0] - 2026-03-19
 
 ### 🎮 核心玩法更新

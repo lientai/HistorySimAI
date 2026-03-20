@@ -5,6 +5,8 @@ import { loadJSON } from "../dataLoader.js";
 import { getLoyaltyTags, getLoyaltyStage, getLoyaltyColor, getFactionClass } from "../systems/courtSystem.js";
 import { requestMinisterReply } from "../api/ministerChat.js";
 import { getApiBase } from "../api/httpClient.js";
+import { AVAILABLE_AVATAR_NAMES, buildNameById } from "../utils/sharedConstants.js";
+import { showError, showSuccess } from "../utils/toast.js";
 
 let currentMinisterChatId = null;
 let tagsConfigCache = null;
@@ -34,12 +36,6 @@ const courtModuleUIState = {
 };
 
 const COURT_SWIPE_HINT_STORAGE_KEY = "courtSwipeHintSeenV1";
-
-const AVAILABLE_AVATAR_NAMES = new Set([
-  "黄道周", "韩继思", "陈新甲", "袁崇焕", "范景文", "祖大寿", "王永光", "温体仁", "洪承畴", "毕自严",
-  "梁廷栋", "林钎", "杨嗣昌", "李邦华", "曹文诏", "曹化淳", "张凤翔", "左良玉", "孙承宗", "孙传庭",
-  "周延儒", "周奎", "吴三桂", "史可法", "卢象升", "倪元璐",
-]);
 
 function createAvatarFallback(parent, fallbackChar) {
   if (!parent) return;
@@ -280,7 +276,7 @@ async function showAppointmentDialogByPosition(positionId) {
     try {
       const result = await requestAppoint(positionId, selectedCharacter.id);
       if (result?.success === false) {
-        alert(`任命失败: ${result.error || "未知错误"}`);
+        showError(`任命失败: ${result.error || "未知错误"}`);
         return;
       }
 
@@ -302,7 +298,7 @@ async function showAppointmentDialogByPosition(positionId) {
         renderCourtView(container);
       }
     } catch (e) {
-      alert(`任命失败: ${e.message}`);
+      showError(`任命失败: ${e.message}`);
     } finally {
       appointing = false;
       confirmBtn.textContent = "确认任命";
@@ -473,7 +469,7 @@ async function showAppointmentDialogByMinister(ministerId) {
     try {
       const result = await requestAppoint(selectedPosition.id, ministerId);
       if (result?.success === false) {
-        alert(`调整失败: ${result.error || "未知错误"}`);
+        showError(`调整失败: ${result.error || "未知错误"}`);
         return;
       }
 
@@ -495,7 +491,7 @@ async function showAppointmentDialogByMinister(ministerId) {
         renderCourtView(container);
       }
     } catch (e) {
-      alert(`调整失败: ${e.message}`);
+      showError(`调整失败: ${e.message}`);
     } finally {
       appointing = false;
       confirmBtn.textContent = "确认调整";
@@ -779,7 +775,7 @@ async function showPositionSelectDialog(minister, state) {
     try {
       const result = await requestAppoint(selectedPosition.id, minister.id);
       if (result?.success === false) {
-        alert(`任命失败: ${result.error || "未知错误"}`);
+        showError(`任命失败: ${result.error || "未知错误"}`);
         return;
       }
 
@@ -801,7 +797,7 @@ async function showPositionSelectDialog(minister, state) {
         renderCourtView(container);
       }
     } catch (e) {
-      alert(`任命失败: ${e.message}`);
+      showError(`任命失败: ${e.message}`);
     } finally {
       appointing = false;
       confirmBtn.textContent = "确认调整";
@@ -1852,7 +1848,7 @@ async function showAppointmentDialogAsync(position, state) {
     try {
       const result = await requestAppoint(position.id, selectedCharacter.id);
       if (result?.success === false) {
-        alert(`任命失败: ${result.error || "未知错误"}`);
+        showError(`任命失败: ${result.error || "未知错误"}`);
         return;
       }
 
@@ -1874,7 +1870,7 @@ async function showAppointmentDialogAsync(position, state) {
         renderCourtView(container);
       }
     } catch (e) {
-      alert(`任命失败: ${e.message}`);
+      showError(`任命失败: ${e.message}`);
     } finally {
       appointing = false;
       confirmBtn.textContent = "确认任命";

@@ -5,6 +5,8 @@ import { requestStoryTurn } from "../api/llmStory.js";
 import { sanitizeStoryEffects } from "../api/validators.js";
 import { startDanmuForEdict, stopDanmu } from "./danmuSystem.js";
 import { computeCustomPolicyQuarterBonus, getPolicyBonusSummary } from "./coreGameplaySystem.js";
+import { AVAILABLE_AVATAR_NAMES, buildNameById, NATION_LABELS, INVERT_COLOR_KEYS, PERCENT_KEYS } from "../utils/sharedConstants.js";
+import { applyEffects as applyEffectsModule } from "../utils/effectsProcessor.js";
 
 let storyCache = { key: null, data: null };
 let lastAppliedKey = null;
@@ -15,12 +17,6 @@ const MINISTER_NAME_COLORS = [
   "#8B0000", "#2e7d32", "#1565c0", "#e65100", "#6a1b9a",
   "#00695c", "#ad1457", "#4527a0",
 ];
-
-const AVAILABLE_AVATAR_NAMES = new Set([
-  "黄道周", "韩继思", "陈新甲", "袁崇焕", "范景文", "祖大寿", "王永光", "温体仁", "洪承畴", "毕自严",
-  "梁廷栋", "林钎", "杨嗣昌", "李邦华", "曹文诏", "曹化淳", "张凤翔", "左良玉", "孙承宗", "孙传庭",
-  "周延儒", "周奎", "吴三桂", "史可法", "卢象升", "倪元璐",
-]);
 
 function buildSpeakerMap() {
   const state = getState();
@@ -129,19 +125,14 @@ export function pushCurrentTurnToHistory(state, chosenChoice, effects) {
 function renderDeltaCard(container, effects, state, titleText = "") {
   if (!effects) return;
   const entries = [];
-  const labels = {
-    treasury: "国库", grain: "粮储", militaryStrength: "军力",
-    civilMorale: "民心", borderThreat: "边患", disasterLevel: "天灾",
-    corruptionLevel: "贪腐",
-  };
-  for (const [key, label] of Object.entries(labels)) {
+  for (const [key, label] of Object.entries(NATION_LABELS)) {
     if (typeof effects[key] === "number" && effects[key] !== 0) {
-      entries.push({ label, delta: effects[key], invertColor: ["borderThreat", "disasterLevel", "corruptionLevel"].includes(key) });
+      entries.push({ label, delta: effects[key], invertColor: INVERT_COLOR_KEYS.includes(key) });
     }
   }
   if (effects.loyalty && typeof effects.loyalty === "object") {
     const ministers = state.ministers || [];
-    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    const nameById = buildNameById(ministers);
     for (const [id, delta] of Object.entries(effects.loyalty)) {
       if (typeof delta === "number" && delta !== 0) {
         entries.push({ label: (nameById[id] || id) + " 忠诚", delta, invertColor: false });
@@ -150,7 +141,7 @@ function renderDeltaCard(container, effects, state, titleText = "") {
   }
   if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     const ministers = state.ministers || [];
-    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    const nameById = buildNameById(ministers);
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {
       if (typeof positionId !== "string" || typeof characterId !== "string") continue;
       entries.push({
@@ -164,7 +155,7 @@ function renderDeltaCard(container, effects, state, titleText = "") {
   }
   if (effects.characterDeath && typeof effects.characterDeath === "object") {
     const ministers = state.ministers || [];
-    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    const nameById = buildNameById(ministers);
     for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
       entries.push({
         label: `处置 ${nameById[characterId] || characterId}`,
@@ -748,34 +739,12 @@ function mergeUniqueStrings(base, extra) {
 function applyEffects(effects) {
   if (!effects) return;
   const s = getState();
-  const nation = { ...(s.nation || {}) };
   const ministers = Array.isArray(s.ministers) ? s.ministers : [];
-  const ministerNameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+  const ministerNameById = buildNameById(ministers);
   const storylineTagsToClose = [];
   
-  const PERCENT_KEYS = ["militaryStrength", "civilMorale", "borderThreat", "disasterLevel", "corruptionLevel"];
-  
-  Object.entries(effects).forEach(([key, value]) => {
-    if (typeof value !== "number") return;
-    
-    if (key === "treasury" || key === "grain") {
-      nation[key] = Math.max(0, (nation[key] || 0) + value);
-    } else if (PERCENT_KEYS.includes(key)) {
-      const clampedDelta = Math.max(-30, Math.min(30, value));
-      nation[key] = Math.max(0, Math.min(100, (nation[key] || 0) + clampedDelta));
-    }
-  });
-  setState({ nation });
-
-  if (effects.loyalty && typeof effects.loyalty === "object") {
-    const loyalty = { ...(s.loyalty || {}) };
-    for (const [id, delta] of Object.entries(effects.loyalty)) {
-      if (typeof delta !== "number") continue;
-      const clampedDelta = Math.max(-20, Math.min(20, delta));
-      loyalty[id] = Math.max(0, Math.min(100, (loyalty[id] || 0) + clampedDelta));
-    }
-    setState({ loyalty });
-  }
+  const { nation: newNation, loyalty: newLoyalty } = applyEffectsModule(s.nation || {}, effects, s.loyalty || {});
+  setState({ nation: newNation, loyalty: newLoyalty });
 
   if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     const currentState = getState();

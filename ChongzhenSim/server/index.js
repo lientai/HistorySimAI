@@ -3,6 +3,19 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:8080",
+  "http://localhost:3000",
+  "http://localhost:3002",
+  "http://127.0.0.1:8080",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3002",
+];
+
+const REQUEST_TIMEOUT_MS = 60000;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 200;
+
 const SYSTEM_PROMPT = `你是《崇祯皇帝模拟器》游戏的剧情写手。
 每回合你必须只输出一个合法 JSON 对象，且结构中包含 header、storyParagraphs、choices。
 若涉及任命或处置，请写入 lastChoiceEffects.appointments / lastChoiceEffects.characterDeath。`;
@@ -18,7 +31,20 @@ function readJsonSafely(filePath) {
 
 function createApp(options = {}) {
   const app = express();
-  app.use(cors({ origin: true }));
+  
+  const allowedOrigins = options.allowedOrigins || 
+    (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : DEFAULT_ALLOWED_ORIGINS);
+  
+  app.use(cors({ 
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
+  }));
   app.use(express.json({ limit: "1mb" }));
 
   const configPath = options.configPath || path.join(__dirname, "config.json");
@@ -141,18 +167,27 @@ function createApp(options = {}) {
     ];
 
     try {
-      const response = await fetch(`${LLM_API_BASE}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${LLM_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: LLM_MODEL,
-          messages,
-          response_format: { type: "json_object" },
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      let response;
+      try {
+        response = await fetch(`${LLM_API_BASE}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${LLM_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: LLM_MODEL,
+            messages,
+            response_format: { type: "json_object" },
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errText = await response.text();
@@ -199,14 +234,23 @@ function createApp(options = {}) {
     const messages = [{ role: "system", content: systemPrompt }, ...history.slice(-20)];
 
     try {
-      const response = await fetch(`${LLM_API_BASE}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${LLM_API_KEY}`,
-        },
-        body: JSON.stringify({ model: LLM_CHAT_MODEL, messages }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      let response;
+      try {
+        response = await fetch(`${LLM_API_BASE}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${LLM_API_KEY}`,
+          },
+          body: JSON.stringify({ model: LLM_CHAT_MODEL, messages }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errText = await response.text();
