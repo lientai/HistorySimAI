@@ -987,10 +987,92 @@ function parseHostileDamageFromEffects(effects) {
   if (!raw || typeof raw !== "object") return map;
   for (const [key, value] of Object.entries(raw)) {
     if (typeof value !== "number") continue;
-    if (value <= 0) continue;
+    if (value === 0) continue;
     map[key] = (map[key] || 0) + Math.round(value);
   }
   return map;
+}
+
+function isMilitaryFailureText(choiceText, effects) {
+  const text = String(choiceText || "");
+  const failPattern = /失败|失利|受挫|战败|无功而返|久攻不下|折损|败退|反扑|溃退|被击退/;
+  if (failPattern.test(text)) return true;
+  if (effects && typeof effects === "object") {
+    if (typeof effects.militaryStrength === "number" && effects.militaryStrength < -4) return true;
+    if (typeof effects.borderThreat === "number" && effects.borderThreat > 2) return true;
+  }
+  return false;
+}
+
+function evolveProvinceStats(state) {
+  const currentStats = state.provinceStats;
+  if (!currentStats || typeof currentStats !== "object") return null;
+  const nation = state.nation || {};
+  const unrest = clamp(state.unrest || 0, 0, 100);
+  const partyStrife = clamp(state.partyStrife || 0, 0, 100);
+
+  const next = {};
+  let changed = false;
+
+  Object.entries(currentStats).forEach(([name, raw]) => {
+    const p = raw && typeof raw === "object" ? raw : {};
+    const morale = clamp(typeof p.morale === "number" ? p.morale : 50, 0, 100);
+    const corruption = clamp(typeof p.corruption === "number" ? p.corruption : 50, 0, 100);
+    const disaster = clamp(typeof p.disaster === "number" ? p.disaster : 50, 0, 100);
+
+    const moraleTarget = clamp((nation.civilMorale || 50) - unrest * 0.12, 0, 100);
+    const corruptionTarget = clamp((nation.corruptionLevel || 50) + partyStrife * 0.1, 0, 100);
+    const disasterTarget = clamp((nation.disasterLevel || 50) + unrest * 0.06, 0, 100);
+
+    const nextMorale = clamp(morale + Math.round((moraleTarget - morale) * 0.2), 0, 100);
+    const nextCorruption = clamp(corruption + Math.round((corruptionTarget - corruption) * 0.2), 0, 100);
+    const nextDisaster = clamp(disaster + Math.round((disasterTarget - disaster) * 0.2), 0, 100);
+
+    const baseTaxSilver = typeof p.__baseTaxSilver === "number"
+      ? p.__baseTaxSilver
+      : (typeof p.taxSilver === "number" ? p.taxSilver : 0);
+    const baseTaxGrain = typeof p.__baseTaxGrain === "number"
+      ? p.__baseTaxGrain
+      : (typeof p.taxGrain === "number" ? p.taxGrain : 0);
+    const baseRecruits = typeof p.__baseRecruits === "number"
+      ? p.__baseRecruits
+      : (typeof p.recruits === "number" ? p.recruits : 0);
+
+    const taxFactor = clamp(0.95 + (nextMorale - 50) / 220 - (nextCorruption - 50) / 240 - (nextDisaster - 50) / 280 - unrest / 420, 0.45, 1.45);
+    const grainFactor = clamp(0.95 + (nextMorale - 50) / 240 - (nextDisaster - 50) / 210 - unrest / 480, 0.5, 1.5);
+    const recruitFactor = clamp(0.9 + (nextMorale - 50) / 300 + (partyStrife / 800) - (nextDisaster - 50) / 260, 0.45, 1.35);
+
+    const nextTaxSilver = Math.max(0, Math.round(baseTaxSilver * taxFactor));
+    const nextTaxGrain = Math.max(0, Math.round(baseTaxGrain * grainFactor));
+    const nextRecruits = Math.max(0, Math.round(baseRecruits * recruitFactor));
+
+    const nextItem = {
+      ...p,
+      morale: nextMorale,
+      corruption: nextCorruption,
+      disaster: nextDisaster,
+      taxSilver: nextTaxSilver,
+      taxGrain: nextTaxGrain,
+      recruits: nextRecruits,
+      __baseTaxSilver: baseTaxSilver,
+      __baseTaxGrain: baseTaxGrain,
+      __baseRecruits: baseRecruits,
+    };
+    next[name] = nextItem;
+
+    if (
+      nextMorale !== morale ||
+      nextCorruption !== corruption ||
+      nextDisaster !== disaster ||
+      nextTaxSilver !== p.taxSilver ||
+      nextTaxGrain !== p.taxGrain ||
+      nextRecruits !== p.recruits
+    ) {
+      changed = true;
+    }
+  });
+
+  return changed ? next : null;
 }
 
 function extractHostileTargetsFromText(choiceText, hostileForces) {
@@ -1039,6 +1121,7 @@ export function resolveHostileForcesAfterChoice(state, choiceText, effects, year
   let prestigeDelta = 0;
   const news = [];
   const defeatedTags = [];
+  const failureByText = isMilitaryFailureText(choiceText, effects);
 
   nextHostiles.forEach((force) => {
     if (force.isDefeated) return;
@@ -1053,6 +1136,24 @@ export function resolveHostileForcesAfterChoice(state, choiceText, effects, year
       damage = baseDamage;
     }
     if (!damage) return;
+
+    const failByDamage = damage < 0;
+    const actualFail = failByDamage || failureByText;
+
+    if (actualFail) {
+      const rebound = Math.max(2, Math.round(Math.abs(damage) * 0.7));
+      force.power = clamp((force.power || 0) + rebound, 0, 100);
+      force.status = `朝廷攻势受挫，${force.name}趁势反扑，势力值升至 ${force.power}/100。`;
+      effectsPatch.borderThreat = (effectsPatch.borderThreat || 0) + Math.max(2, Math.round(rebound / 3));
+      effectsPatch.civilMorale = (effectsPatch.civilMorale || 0) - 2;
+      news.push({
+        title: `军事开拓受挫：${force.name}反扑`,
+        summary: `本回合对${force.name}打击失利，敌势回升 ${rebound} 点，当前势力值 ${force.power}/100。`,
+        tag: "急",
+        icon: "⚠️",
+      });
+      return;
+    }
 
     force.power = clamp((force.power || 0) - damage, 0, 100);
     force.status = force.power <= 0
@@ -1369,6 +1470,10 @@ export function processCoreGameplayTurn(state, choiceText, effectiveEffects, nex
     policyPoints: (state.policyPoints || 0) + quarterReward,
     systemPublicOpinion: [...buildSystemPublicOpinion({ ...state, prestige, partyStrife, unrest }), ...consequenceOpinions],
   };
+  const nextProvinceStats = evolveProvinceStats({ ...state, unrest, partyStrife });
+  if (nextProvinceStats) {
+    nextState.provinceStats = nextProvinceStats;
+  }
   nextState.systemNewsToday = buildSystemNews(nextState, quarterAgenda, resolvedConsequences);
 
   if (quarterReward > 0) {

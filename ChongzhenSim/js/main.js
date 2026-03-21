@@ -70,15 +70,43 @@ async function preloadBasicData() {
   const provinceStats = (() => {
     const map = {};
     const provinces = Array.isArray(nationInit.provinces) ? nationInit.provinces : [];
+    const existingProvinceStats = current.provinceStats && typeof current.provinceStats === "object"
+      ? current.provinceStats
+      : {};
     provinces.forEach((p) => {
       if (!p || !p.name) return;
+      const existing = existingProvinceStats[p.name] || {};
+      const baseTaxSilver = typeof existing.__baseTaxSilver === "number"
+        ? existing.__baseTaxSilver
+        : (typeof p.taxSilver === "number" ? p.taxSilver : 0);
+      const baseTaxGrain = typeof existing.__baseTaxGrain === "number"
+        ? existing.__baseTaxGrain
+        : (typeof p.taxGrain === "number" ? p.taxGrain : 0);
+      const baseRecruits = typeof existing.__baseRecruits === "number"
+        ? existing.__baseRecruits
+        : (typeof p.recruits === "number" ? p.recruits : 0);
       map[p.name] = {
-        taxSilver: typeof p.taxSilver === "number" ? p.taxSilver : 0,
-        taxGrain: typeof p.taxGrain === "number" ? p.taxGrain : 0,
-        recruits: typeof p.recruits === "number" ? p.recruits : 0,
-        morale: typeof p.morale === "number" ? p.morale : 50,
-        corruption: typeof p.corruption === "number" ? p.corruption : 50,
-        disaster: typeof p.disaster === "number" ? p.disaster : 50,
+        taxSilver: typeof existing.taxSilver === "number"
+          ? existing.taxSilver
+          : (typeof p.taxSilver === "number" ? p.taxSilver : 0),
+        taxGrain: typeof existing.taxGrain === "number"
+          ? existing.taxGrain
+          : (typeof p.taxGrain === "number" ? p.taxGrain : 0),
+        recruits: typeof existing.recruits === "number"
+          ? existing.recruits
+          : (typeof p.recruits === "number" ? p.recruits : 0),
+        morale: typeof existing.morale === "number"
+          ? existing.morale
+          : (typeof p.morale === "number" ? p.morale : 50),
+        corruption: typeof existing.corruption === "number"
+          ? existing.corruption
+          : (typeof p.corruption === "number" ? p.corruption : 50),
+        disaster: typeof existing.disaster === "number"
+          ? existing.disaster
+          : (typeof p.disaster === "number" ? p.disaster : 50),
+        __baseTaxSilver: baseTaxSilver,
+        __baseTaxGrain: baseTaxGrain,
+        __baseRecruits: baseRecruits,
       };
     });
     return map;
