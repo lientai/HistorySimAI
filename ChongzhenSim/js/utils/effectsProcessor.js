@@ -1,4 +1,4 @@
-const PERCENT_KEYS = ["militaryStrength", "civilMorale", "borderThreat", "disasterLevel", "corruptionLevel"];
+import { PERCENT_KEYS } from "./sharedConstants.js";
 
 export function applyEffects(nation, effects, loyalty) {
   if (!effects) return { nation, loyalty };

@@ -1,30 +1,20 @@
 import { buildSpeakerMap, buildMinisterNameToInfo, highlightMinisterNames, buildBlockText } from "../utils/storyParser.js";
 import { loadJSON } from "../dataLoader.js";
+import { AVAILABLE_AVATAR_NAMES, buildNameById, NATION_LABELS, INVERT_COLOR_KEYS } from "./sharedConstants.js";
 
 let positionsCache = null;
-
-const AVAILABLE_AVATAR_NAMES = new Set([
-  "黄道周", "韩继思", "陈新甲", "袁崇焕", "范景文", "祖大寿", "王永光", "温体仁", "洪承畴", "毕自严",
-  "梁廷栋", "林钎", "杨嗣昌", "李邦华", "曹文诏", "曹化淳", "张凤翔", "左良玉", "孙承宗", "孙传庭",
-  "周延儒", "周奎", "吴三桂", "史可法", "卢象升", "倪元璐",
-]);
 
 export async function renderDeltaCard(container, effects, state) {
   if (!effects) return;
   const entries = [];
-  const labels = {
-    treasury: "国库", grain: "粮储", militaryStrength: "军力",
-    civilMorale: "民心", borderThreat: "边患", disasterLevel: "天灾",
-    corruptionLevel: "贪腐",
-  };
-  for (const [key, label] of Object.entries(labels)) {
+  for (const [key, label] of Object.entries(NATION_LABELS)) {
     if (typeof effects[key] === "number" && effects[key] !== 0) {
-      entries.push({ label, delta: effects[key], invertColor: ["borderThreat", "disasterLevel", "corruptionLevel"].includes(key) });
+      entries.push({ label, delta: effects[key], invertColor: INVERT_COLOR_KEYS.includes(key) });
     }
   }
   if (effects.loyalty && typeof effects.loyalty === "object") {
     const ministers = state.ministers || [];
-    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    const nameById = buildNameById(ministers);
     for (const [id, delta] of Object.entries(effects.loyalty)) {
       if (typeof delta === "number" && delta !== 0) {
         entries.push({ label: (nameById[id] || id) + " 忠诚", delta, invertColor: false });
@@ -42,7 +32,7 @@ export async function renderDeltaCard(container, effects, state) {
     const positions = positionsCache?.positions || [];
     const positionMap = Object.fromEntries(positions.map((p) => [p.id, p.name]));
     const ministers = state.ministers || [];
-    const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+    const nameById = buildNameById(ministers);
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {
       const posName = positionMap[positionId] || positionId;
       const charName = nameById[characterId] || characterId;

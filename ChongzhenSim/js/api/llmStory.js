@@ -1,6 +1,7 @@
 import { buildStoryRequestBody } from "./requestContext.js";
 import { getApiBase, postJsonAndReadText } from "./httpClient.js";
 import { normalizeStoryPayload, sanitizeStoryEffects } from "./validators.js";
+import { buildNameById } from "../utils/sharedConstants.js";
 
 export async function requestStoryTurn(state, lastChoice) {
   const config = state.config || {};
@@ -201,7 +202,7 @@ const COURT_CHAT_TAKE_PER_MINISTER = 5;
 function buildCourtChatSummary(state) {
   const courtChats = state.courtChats || {};
   const ministers = state.ministers || [];
-  const nameById = Object.fromEntries(ministers.map((m) => [m.id, m.name || m.id]));
+  const nameById = buildNameById(ministers);
   const parts = [];
   let len = 0;
   for (const [ministerId, list] of Object.entries(courtChats)) {
