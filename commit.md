@@ -487,3 +487,20 @@
 - 自检结果：
   - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）
   - Server：未单独执行（本次未改动服务端逻辑）
+
+#### 6.1.19 5c4dc27 · fix(gameplay): restore province evolution and support hostile rebound on failed strikes
+- 全哈希：5c4dc271b84d0ee2a2bc372c4e235fbe816c151a
+- 时间：2026-03-21
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/main.js
+  - ChongzhenSim/js/systems/coreGameplaySystem.js
+- 玩法兼容与冲突取舍：
+  - 修复省份数据被预加载覆盖导致“各省数据不变化”的问题，保留存档演化值并引入基准字段用于稳定重算。
+  - 在核心回合结算中恢复各省动态演化（税收/粮储/兵源/民心/贪腐/天灾）随国势联动更新。
+  - 军事开拓新增“打击失败”分支：当推理文本或数值表明失利时，敌对势力值适量回升，并同步边患与民心反馈。
+- 自检结果：
+  - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）
+  - Server：未单独执行（本次未改动服务端逻辑）
