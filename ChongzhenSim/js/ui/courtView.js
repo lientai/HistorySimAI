@@ -37,6 +37,10 @@ const courtModuleUIState = {
 
 const COURT_SWIPE_HINT_STORAGE_KEY = "courtSwipeHintSeenV1";
 
+function isAliveCharacter(state, characterId) {
+  return state?.characterStatus?.[characterId]?.isAlive !== false;
+}
+
 function createAvatarFallback(parent, fallbackChar) {
   if (!parent) return;
   let fallbackNode = parent.querySelector(".avatar-fallback-text");
@@ -131,7 +135,7 @@ async function showAppointmentDialogByPosition(positionId) {
   const excludedFactions = new Set(['rebel', 'qing']);
   
   const aliveCharacters = allCharacters.filter(c => 
-    c.isAlive !== false && 
+    isAliveCharacter(state, c.id) &&
     !excludedIds.has(c.id) && 
     !excludedFactions.has(c.faction)
   );
@@ -345,6 +349,10 @@ async function showAppointmentDialogByMinister(ministerId) {
   const ministers = state.ministers || [];
   const minister = ministers.find(m => m.id === ministerId);
   if (!minister) return;
+  if (!isAliveCharacter(state, ministerId)) {
+    showError("该人物已故，无法授予官职。");
+    return;
+  }
 
   const positionsData = await loadJSON("data/positions.json");
   const positions = positionsData?.positions || [];
@@ -950,6 +958,8 @@ function createMinisterListElement(state, tagsConfig, onSelectMinister) {
   orderedMinisters.forEach((m, index) => {
     const item = document.createElement("div");
     item.className = "minister-item" + (ministerUnread[m.id] ? " minister-item--unread" : "");
+    const alive = isAliveCharacter(state, m.id);
+    if (!alive) item.className += " minister-item--deceased";
 
     const displayName = getDisplayName(m.name);
     const avatar = document.createElement("div");
@@ -972,17 +982,28 @@ function createMinisterListElement(state, tagsConfig, onSelectMinister) {
     nameLine.className = "minister-name";
     nameLine.textContent = displayName;
     nameLine.style.color = MINISTER_NAME_COLORS[index % MINISTER_NAME_COLORS.length];
+
+    if (!alive) {
+      const deceasedTag = document.createElement("span");
+      deceasedTag.className = "minister-status-tag minister-status-tag--deceased";
+      deceasedTag.textContent = "已故";
+      nameRow.appendChild(nameLine);
+      nameRow.appendChild(deceasedTag);
+    } else {
+      nameRow.appendChild(nameLine);
+    }
     
     const factionTag = document.createElement("span");
     factionTag.className = "minister-faction-tag " + getFactionClass(m.faction);
     factionTag.textContent = m.factionLabel || m.faction || "";
     
-    nameRow.appendChild(nameLine);
     nameRow.appendChild(factionTag);
     
     const roleLine = document.createElement("div");
     roleLine.className = "minister-role";
-    roleLine.textContent = m.role;
+    roleLine.textContent = alive
+      ? m.role
+      : `${m.role || "群臣"} · ${state.characterStatus?.[m.id]?.deathReason || "病逝"}`;
 
     const preview = document.createElement("div");
     preview.className = "minister-preview";
