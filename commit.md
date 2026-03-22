@@ -544,3 +544,21 @@
 - 自检结果：
   - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）
   - Server：未单独执行（本次未改动服务端逻辑）
+
+#### 6.1.22 pending · fix(edict): enforce roster constraints and apply turn effects on all choices
+- 全哈希：`pending`
+- 时间：2026-03-22
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+  - ChongzhenSim/js/systems/storySystem.js
+- 玩法兼容与冲突取舍：
+  - 诏书推理上下文新增“在任且在世/在世未任/已故”快照约束，避免已故或未任角色在剧情中错配出现。
+  - `lastChoiceEffects` 回填从“仅自拟诏书”扩展到“所有诏书选择”，保证每轮诏书推演数值与国家状态对齐。
+  - 诏书效果中的任命在落地时增加已故过滤，阻止已故角色被重新任命。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm run test -- server/index.test.js js/api/validators.test.js` 通过（46/46）
+  - Server：未单独执行（本次通过 Vitest 跑了 server/index.test.js）

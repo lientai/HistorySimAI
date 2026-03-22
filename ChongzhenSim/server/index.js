@@ -18,7 +18,8 @@ const RATE_LIMIT_MAX_REQUESTS = 200;
 
 const SYSTEM_PROMPT = `你是《崇祯皇帝模拟器》游戏的剧情写手。
 每回合你必须只输出一个合法 JSON 对象，且结构中包含 header、storyParagraphs、choices。
-若涉及任命或处置，请写入 lastChoiceEffects.appointments / lastChoiceEffects.characterDeath。`;
+若涉及任命或处置，请写入 lastChoiceEffects.appointments / lastChoiceEffects.characterDeath。
+必须严格遵循传入的朝堂快照：已故角色不得复活、任职或作为在任官员出现；未在任角色不得被称作在任。`;
 
 function readJsonSafely(filePath) {
   try {
@@ -154,6 +155,43 @@ function createApp(options = {}) {
       const ministerList = ministers.map((m) => `${m.id}（${m.name}，${m.role || ""}）`).join("、");
       base += `\n\n当前大臣 id 与名字对应：${ministerList}`;
     }
+
+    const positions = getPositions();
+    const positionById = new Map((Array.isArray(positions) ? positions : []).map((p) => [String(p.id || ""), p]));
+    const ministerById = new Map((Array.isArray(ministers) ? ministers : []).map((m) => [String(m.id || ""), m]));
+    const appointments = state.appointments && typeof state.appointments === "object" ? state.appointments : {};
+
+    const activeAppointments = Object.entries(appointments)
+      .filter(([positionId, characterId]) => {
+        if (!positionById.has(String(positionId || ""))) return false;
+        if (typeof characterId !== "string" || !characterId.trim()) return false;
+        return getAliveStatus(state, characterId);
+      })
+      .map(([positionId, characterId]) => {
+        const pos = positionById.get(String(positionId || ""));
+        const minister = ministerById.get(String(characterId || ""));
+        return {
+          positionId,
+          positionName: pos?.name || positionId,
+          characterId,
+          characterName: minister?.name || characterId,
+        };
+      });
+
+    const inOfficeIds = new Set(activeAppointments.map((item) => item.characterId));
+    const aliveNotInOffice = (Array.isArray(ministers) ? ministers : [])
+      .filter((m) => m && m.id && getAliveStatus(state, m.id) && !inOfficeIds.has(m.id))
+      .map((m) => ({ id: m.id, name: m.name }));
+
+    const deceasedMinisters = (Array.isArray(ministers) ? ministers : [])
+      .filter((m) => m && m.id && !getAliveStatus(state, m.id))
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        reason: state?.characterStatus?.[m.id]?.deathReason || "已故",
+      }));
+
+    base += `\n\n朝堂任职快照（推理硬约束）：在任且在世=${JSON.stringify(activeAppointments)}；在世未任=${JSON.stringify(aliveNotInOffice)}；已故=${JSON.stringify(deceasedMinisters)}。请保持称谓与任职状态一致。`;
 
     const unlocked = Array.isArray(unlockedPolicies) ? unlockedPolicies.filter((id) => typeof id === "string" && id.trim()) : [];
     const custom = Array.isArray(customPolicies)

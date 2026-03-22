@@ -752,6 +752,7 @@ function applyEffects(effects) {
     const appointments = { ...beforeAppointments };
     for (const [positionId, characterId] of Object.entries(effects.appointments)) {
       if (typeof positionId !== "string" || typeof characterId !== "string") continue;
+      if (currentState.characterStatus?.[characterId]?.isAlive === false) continue;
       for (const [posId, charId] of Object.entries(appointments)) {
         if (charId === characterId && posId !== positionId) {
           delete appointments[posId];
@@ -1392,20 +1393,20 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
   const data = await loadStoryData(state, container, renderId, onChoice, options);
   if (data == null) return;
 
-  if (data.lastChoiceEffects && state.lastChoiceId === "custom_edict") {
+  if (data.lastChoiceEffects && state.lastChoiceId != null) {
     const lastEntry = history[history.length - 1];
     if (lastEntry && lastEntry.chosenChoice) {
       const prevEffects = sanitizeStoryEffects(lastEntry.effects || null);
       const nextEffects = sanitizeStoryEffects(data.lastChoiceEffects);
       const deltaEffects = computeEffectDelta(prevEffects, nextEffects);
-      auditCustomEdictCorrection(prevEffects, nextEffects, deltaEffects);
+      if (state.lastChoiceId === "custom_edict") {
+        auditCustomEdictCorrection(prevEffects, nextEffects, deltaEffects);
+      }
 
-      // 如果 LLM 给出了更精准的数值变化，则使用差值进行调整
       if (deltaEffects) {
         applyEffects(deltaEffects);
       }
 
-      // 保持历史记录中的 effects 为 LLM 最终输出
       lastEntry.effects = nextEffects;
       const updatedHistory = [...history];
       updatedHistory[updatedHistory.length - 1] = lastEntry;
@@ -1415,7 +1416,7 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
       const deltaCards = historyContainer.querySelectorAll('.story-delta-card');
       const lastDeltaCard = deltaCards[deltaCards.length - 1];
       if (lastDeltaCard) lastDeltaCard.remove();
-      renderDeltaCard(historyContainer, deltaEffects || data.lastChoiceEffects, state, "本轮推演数值变动");
+      renderDeltaCard(historyContainer, deltaEffects || nextEffects, getState(), "本轮推演数值变动");
     }
   }
 

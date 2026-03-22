@@ -326,6 +326,28 @@ describe('buildUserMessage', () => {
     expect(message).toContain('bi_ziyan');
     expect(message).toContain('毕自严');
   });
+
+  it('should include court roster snapshot constraints for story inference', () => {
+    const { buildUserMessage } = createTestApp();
+    const body = {
+      state: {
+        currentDay: 4,
+        currentYear: 3,
+        currentMonth: 5,
+        currentPhase: 'morning',
+        nation: { treasury: 500000, grain: 30000 },
+        appointments: { hubu_shangshu: 'bi_ziyan' },
+        characterStatus: { wen_tiren: { isAlive: false, deathReason: '处死' } },
+      },
+      lastChoiceId: 'choice_1',
+      lastChoiceText: '整顿吏治'
+    };
+    const message = buildUserMessage(body);
+    expect(message).toContain('朝堂任职快照');
+    expect(message).toContain('在任且在世');
+    expect(message).toContain('在世未任');
+    expect(message).toContain('已故');
+  });
 });
 
 describe('sanitizeMinisterReplyText', () => {
