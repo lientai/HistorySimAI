@@ -545,8 +545,8 @@
   - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）
   - Server：未单独执行（本次未改动服务端逻辑）
 
-#### 6.1.22 pending · fix(edict): enforce roster constraints and apply turn effects on all choices
-- 全哈希：`pending`
+#### 6.1.22 7389764 · fix(edict): enforce roster constraints and apply turn effects on all choices
+- 全哈希：`7389764e45664a09b4022452e518dddc57dc4353`
 - 时间：2026-03-22
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
