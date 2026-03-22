@@ -527,6 +527,30 @@
 - 类型：fix
 - 变更文件：
   - ChongzhenSim/js/api/requestContext.js
+
+#### 6.1.23 2b3c614 · fix(edict): enforce Chinese-only policy wording in story outputs
+- 全哈希：`2b3c6148f5f8e8d99265eb3fd149a08ec84ce6a4`
+- 时间：2026-03-22
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+  - ChongzhenSim/js/api/requestContext.js
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/js/systems/turnSystem.js
+  - ChongzhenSim/js/ui/nationView.js
+  - ChongzhenSim/js/utils/displayStateMetrics.js
+  - ChongzhenSim/js/utils/displayStateMetrics.test.js
+- 玩法兼容与修复说明：
+  - 诏书推理上下文中的“已实施国策”改为优先使用中文国策名，避免把英文 policy id 回显到剧情文案。
+  - 后端新增剧情文本清洗：对 storyParagraphs / choices.text / choices.hint / news 等可见字段将国策英文 id 替换为中文名。
+  - 系统提示词新增硬约束：剧情、选项、提示必须为中文，不得出现英文国策ID。
+  - 朝堂与诏书 delta 面板继续共用同一套 displayStateMetrics 逻辑，展示口径保持一致。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm run test -- server/index.test.js js/api/validators.test.js js/utils/displayStateMetrics.test.js js/utils/effectsProcessor.test.js` 通过（80/80）
   - ChongzhenSim/js/api/validators.js
   - ChongzhenSim/js/api/validators.test.js
   - ChongzhenSim/js/ui/courtView.js
@@ -562,3 +586,27 @@
 - 自检结果：
   - Root：`cd ChongzhenSim && npm run test -- server/index.test.js js/api/validators.test.js` 通过（46/46）
   - Server：未单独执行（本次通过 Vitest 跑了 server/index.test.js）
+
+#### 6.1.23 ������hash �� fix(edict): enforce Chinese-only policy wording in story outputs
+- ȫ��ϣ��`������`
+- ʱ�䣺2026-03-22
+- ��֧��my-feature-branch
+- ���ߣ�JINTIAN-LIU
+- ���ͣ�fix
+- ����ļ���
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+  - ChongzhenSim/js/api/requestContext.js
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/js/systems/storySystem.js
+  - ChongzhenSim/js/systems/turnSystem.js
+  - ChongzhenSim/js/ui/nationView.js
+  - ChongzhenSim/js/utils/displayStateMetrics.js
+  - ChongzhenSim/js/utils/displayStateMetrics.test.js
+- �淨�������޸�˵����
+  - گ�������������еġ���ʵʩ���ߡ���Ϊ����ʹ�����Ĺ������������Ӣ�� policy id ι��ģ�ͺ���Ե������İ���
+  - ������������ı���ϴ���� storyParagraphs / choices.text / choices.hint / news �ȿɼ��ֶν�����Ӣ�� id �滻Ϊ��������
+  - ϵͳ��ʾ������ӲԼ�������顢ѡ���ʾ����Ϊ���ģ����ó���Ӣ�Ĺ���ID��
+  - ������گ�� delta ����������ͬһ�� displayStateMetrics �߼���չʾ�ھ�����һ�¡�
+- �Լ�����
+  - Root��`cd ChongzhenSim && npm run test -- server/index.test.js js/api/validators.test.js js/utils/displayStateMetrics.test.js js/utils/effectsProcessor.test.js` ͨ����80/80��
