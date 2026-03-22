@@ -519,8 +519,8 @@
   - 将季度自动补官改为年末提醒补官，保留空缺治理权给玩家，不再由系统自动任命。
   - 任命候选与按人调岗入口统一增加生死校验，已故人物不可授官，避免状态冲突。
 
-#### 6.1.21 pending · fix(court-chat): enforce alive roster context and mandatory per-turn delta panel
-- 全哈希：`pending`
+#### 6.1.21 429f549 · fix(court-chat): enforce alive roster context and mandatory per-turn delta panel
+- 全哈希：`429f54987b67990caa71f990045f755954e04b99`
 - 时间：2026-03-22
 - 分支：my-feature-branch
 - 作者：JINTIAN-LIU
