@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeStoryPayload, sanitizeStoryEffects } from "./validators.js";
+import { normalizeStoryPayload, parseMinisterReplyPayload, sanitizeStoryEffects } from "./validators.js";
 
 describe("sanitizeStoryEffects", () => {
   it("should clamp unreasonable numeric deltas", () => {
@@ -83,5 +83,68 @@ describe("normalizeStoryPayload", () => {
     expect(normalized.storyParagraphs[1]).toBe("温体仁沉默不语");
     expect(normalized.choices[0].text).toBe("召见孙承宗商议边防");
     expect(normalized.choices[0].hint).toBe("听取洪承畴军报");
+  });
+});
+
+describe("parseMinisterReplyPayload", () => {
+  it("should parse appointments object map", () => {
+    const payload = JSON.stringify({
+      reply: "臣遵旨。",
+      loyaltyDelta: 1,
+      appointments: {
+        hubu_shangshu: "bi_ziyan",
+      },
+    });
+
+    const out = parseMinisterReplyPayload(payload);
+    expect(out.ok).toBe(true);
+    expect(out.value.reply).toBe("臣遵旨。");
+    expect(out.value.loyaltyDelta).toBe(1);
+    expect(out.value.appointments).toEqual({ hubu_shangshu: "bi_ziyan" });
+  });
+
+  it("should parse appointments array format", () => {
+    const payload = JSON.stringify({
+      reply: "已调整。",
+      appointments: [
+        { positionId: "libu_shangshu", characterId: "wang_yongguang" },
+      ],
+    });
+
+    const out = parseMinisterReplyPayload(payload);
+    expect(out.ok).toBe(true);
+    expect(out.value.appointments).toEqual({ libu_shangshu: "wang_yongguang" });
+  });
+
+  it("should parse effects and keep nation deltas", () => {
+    const payload = JSON.stringify({
+      reply: "已调整国库。",
+      effects: {
+        treasury: 12000,
+        grain: -800,
+      },
+      ministerId: "bi_ziyan",
+    });
+
+    const out = parseMinisterReplyPayload(payload);
+    expect(out.ok).toBe(true);
+    expect(out.value.effects.treasury).toBe(12000);
+    expect(out.value.effects.grain).toBe(-800);
+  });
+
+  it("should merge loyaltyDelta into effects.loyalty when ministerId exists", () => {
+    const payload = JSON.stringify({
+      reply: "臣领旨。",
+      loyaltyDelta: 2,
+      ministerId: "wen_tiren",
+      effects: {
+        civilMorale: 1,
+      },
+    });
+
+    const out = parseMinisterReplyPayload(payload);
+    expect(out.ok).toBe(true);
+    expect(out.value.effects.civilMorale).toBe(1);
+    expect(out.value.effects.loyalty.wen_tiren).toBe(2);
   });
 });

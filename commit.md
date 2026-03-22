@@ -518,6 +518,28 @@
 - 玩法兼容与冲突取舍：
   - 将季度自动补官改为年末提醒补官，保留空缺治理权给玩家，不再由系统自动任命。
   - 任命候选与按人调岗入口统一增加生死校验，已故人物不可授官，避免状态冲突。
+
+#### 6.1.21 pending · fix(court-chat): enforce alive roster context and mandatory per-turn delta panel
+- 全哈希：`pending`
+- 时间：2026-03-22
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/api/requestContext.js
+  - ChongzhenSim/js/api/validators.js
+  - ChongzhenSim/js/api/validators.test.js
+  - ChongzhenSim/js/ui/courtView.js
+  - ChongzhenSim/server/index.js
+  - ChongzhenSim/server/index.test.js
+  - ChongzhenSim/server/config.json
+- 玩法兼容与冲突取舍：
+  - 对话推理前注入“在任且在世/在世未任/已故”朝堂快照，并阻断已故大臣议事，减少已死或已离任角色错配复现。
+  - 对话返回支持 appointments/effects 并统一按国家数值处理链路落地，朝堂聊天区强制展示“本轮对话数值变化”并与国家界面 state 对齐。
+  - 服务端新增已故姓名后处理过滤（替换为“旧臣”），作为提示词约束之外的硬兜底。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm test` 通过（110/110）
+  - Server：`cd ChongzhenSim/server && npm test` 通过（51/51）
   - 群臣列表新增已故标签与死亡态样式，同时延后自然死亡推进节奏以降低早期角色流失。
 - 自检结果：
   - Root：cd ChongzhenSim && npm test -- --run 通过（103/103）

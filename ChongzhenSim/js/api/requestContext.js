@@ -55,6 +55,10 @@ export function buildMinisterChatRequestBody(state, ministerId, history) {
   return {
     ministerId,
     history,
+    state: {
+      appointments: state.appointments || {},
+      characterStatus: state.characterStatus || {},
+    },
     ...buildSharedContextFromState(state, { compact: false }),
   };
 }

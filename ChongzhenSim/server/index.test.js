@@ -117,6 +117,28 @@ describe('API Endpoints', () => {
       expect(res.body.error).toBe('minister not found');
     });
 
+    it('should return 400 when minister is deceased in client state', async () => {
+      const { app } = createApp({
+        config: { LLM_API_KEY: 'test-key' },
+        charactersData: mockCharactersData,
+        allowMissingConfig: true
+      });
+
+      const res = await request(app)
+        .post('/api/chongzhen/ministerChat')
+        .send({
+          ministerId: 'bi_ziyan',
+          history: [],
+          state: {
+            characterStatus: {
+              bi_ziyan: { isAlive: false, deathReason: '处死' }
+            }
+          }
+        });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('minister is deceased');
+    });
+
     it('should return 500 when charactersData is not loaded', async () => {
       const { app } = createApp({ 
         config: { LLM_API_KEY: 'test-key' }, 
@@ -303,6 +325,29 @@ describe('buildUserMessage', () => {
     const message = buildUserMessage(body);
     expect(message).toContain('bi_ziyan');
     expect(message).toContain('毕自严');
+  });
+});
+
+describe('sanitizeMinisterReplyText', () => {
+  const createTestApp = () => createApp({
+    config: {},
+    charactersData: mockCharactersData,
+    allowMissingConfig: true
+  });
+
+  it('should replace deceased minister names in reply text', () => {
+    const { sanitizeMinisterReplyText } = createTestApp();
+    const out = sanitizeMinisterReplyText('温体仁已伏法，温体仁旧党尽除。', [
+      { id: 'wen_tiren', name: '温体仁', reason: '处死' },
+    ]);
+    expect(out).toBe('旧臣已伏法，旧臣旧党尽除。');
+  });
+
+  it('should keep text unchanged when no deceased list', () => {
+    const { sanitizeMinisterReplyText } = createTestApp();
+    const input = '毕自严已奉诏办理户部钱粮。';
+    const out = sanitizeMinisterReplyText(input, []);
+    expect(out).toBe(input);
   });
 });
 

@@ -86,6 +86,25 @@ function createApp(options = {}) {
     return state?.characterStatus?.[characterId]?.isAlive !== false;
   }
 
+  function sanitizeMinisterReplyText(reply, deceasedList) {
+    if (typeof reply !== "string" || !reply.trim()) return reply;
+    const deceasedNames = (Array.isArray(deceasedList) ? deceasedList : [])
+      .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length);
+
+    if (!deceasedNames.length) return reply;
+
+    let output = reply;
+    const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    deceasedNames.forEach((name) => {
+      const pattern = new RegExp(escapeRegex(name), "g");
+      output = output.replace(pattern, "旧臣");
+    });
+
+    return output;
+  }
+
   function getSeasonByMonth(month) {
     const m = Number(month) || 1;
     if (m >= 3 && m <= 5) return "春";
@@ -220,6 +239,7 @@ function createApp(options = {}) {
     const body = req.body || {};
     const ministerId = body.ministerId;
     const history = Array.isArray(body.history) ? body.history : [];
+    const clientState = body.state && typeof body.state === "object" ? body.state : {};
 
     if (!ministerId) {
       return res.status(400).json({ error: "ministerId is required" });
@@ -230,8 +250,110 @@ function createApp(options = {}) {
       return res.status(404).json({ error: "minister not found" });
     }
 
-    const systemPrompt = `你现在是 ${minister.name}，只输出 JSON：{"reply":"...","loyaltyDelta":0}`;
-    const messages = [{ role: "system", content: systemPrompt }, ...history.slice(-20)];
+    if (!getAliveStatus(clientState, ministerId)) {
+      return res.status(400).json({ error: "minister is deceased" });
+    }
+
+    const positions = getPositions();
+    const positionIds = positions.map((p) => p.id).filter(Boolean);
+    const ministerIds = ministers.map((m) => m.id).filter(Boolean);
+    const currentAppointments = clientState.appointments && typeof clientState.appointments === "object"
+      ? clientState.appointments
+      : {};
+
+    const normalizeAppointmentsMap = (raw) => {
+      if (!raw) return undefined;
+
+      const positionById = new Map(positions.map((p) => [String(p.id || ""), p]));
+      const positionIdByName = new Map(positions.map((p) => [String(p.name || "").trim(), String(p.id || "")]));
+      const characterById = new Map(ministers.map((m) => [String(m.id || ""), m]));
+      const characterIdByName = new Map(ministers.map((m) => [String(m.name || "").trim(), String(m.id || "")]));
+
+      const toPositionId = (value) => {
+        if (typeof value !== "string") return "";
+        const trimmed = value.trim();
+        if (!trimmed) return "";
+        if (positionById.has(trimmed)) return trimmed;
+        return positionIdByName.get(trimmed) || "";
+      };
+
+      const toCharacterId = (value) => {
+        if (typeof value !== "string") return "";
+        const trimmed = value.trim();
+        if (!trimmed) return "";
+        if (characterById.has(trimmed)) return trimmed;
+        return characterIdByName.get(trimmed) || "";
+      };
+
+      const mapped = {};
+      const pairs = [];
+
+      if (Array.isArray(raw)) {
+        raw.forEach((item) => {
+          if (!item || typeof item !== "object") return;
+          pairs.push([item.positionId, item.characterId]);
+        });
+      } else if (typeof raw === "object") {
+        Object.entries(raw).forEach(([positionRaw, characterRaw]) => {
+          pairs.push([positionRaw, characterRaw]);
+        });
+      } else {
+        return undefined;
+      }
+
+      for (const [positionRaw, characterRaw] of pairs) {
+        const positionId = toPositionId(positionRaw);
+        const characterId = toCharacterId(characterRaw);
+        if (!positionId || !characterId) continue;
+        mapped[positionId] = characterId;
+      }
+
+      return Object.keys(mapped).length ? mapped : undefined;
+    };
+
+    const characterStatus = clientState.characterStatus && typeof clientState.characterStatus === "object"
+      ? clientState.characterStatus
+      : {};
+    const positionById = new Map(positions.map((p) => [String(p.id || ""), p]));
+    const activeAppointments = Object.entries(currentAppointments)
+      .filter(([positionId, characterId]) => {
+        if (!positionById.has(String(positionId || ""))) return false;
+        if (typeof characterId !== "string" || !characterId.trim()) return false;
+        return getAliveStatus(clientState, characterId);
+      })
+      .map(([positionId, characterId]) => {
+        const p = positionById.get(String(positionId || ""));
+        const c = ministers.find((item) => item.id === characterId);
+        return {
+          positionId,
+          positionName: p?.name || positionId,
+          characterId,
+          characterName: c?.name || characterId,
+        };
+      });
+
+    const inOfficeAliveIds = new Set(activeAppointments.map((item) => item.characterId));
+    const aliveMinisters = ministers.filter((m) => getAliveStatus(clientState, m.id));
+    const retiredAliveMinisters = aliveMinisters
+      .filter((m) => !inOfficeAliveIds.has(m.id))
+      .map((m) => ({ id: m.id, name: m.name }));
+    const deceasedMinisters = ministers
+      .filter((m) => !getAliveStatus(clientState, m.id))
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        reason: characterStatus[m.id]?.deathReason || "已故",
+      }));
+
+    const currentOffice = activeAppointments.find((item) => item.characterId === ministerId);
+
+    const systemPrompt = `你现在是 ${minister.name}。\n你必须只输出一个合法 JSON：{"reply":"...","loyaltyDelta":0,"appointments":{},"effects":{}}。\nappointments/effects 可选；只有皇帝明确下达任免或政策调整时才填写。\n不得让已故大臣重新出现、复活、任职或发言；不得将未任职者称作在任官员。\n称谓与官职必须匹配当前朝堂快照，除非本轮在 appointments 中明确变更。`;
+    const contextPrompt = `可用官职ID: ${positionIds.join(", ")}\n可用大臣ID: ${ministerIds.join(", ")}\n当前说话大臣: ${minister.id}(${minister.name})，在任官职=${currentOffice?.positionName || "无"}\n在任且在世名单: ${JSON.stringify(activeAppointments)}\n在世未任名单: ${JSON.stringify(retiredAliveMinisters)}\n已故名单: ${JSON.stringify(deceasedMinisters)}\n当前任命映射: ${JSON.stringify(currentAppointments)}`;
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "system", content: contextPrompt },
+      ...history.slice(-20),
+    ];
 
     try {
       const controller = new AbortController();
@@ -266,6 +388,8 @@ function createApp(options = {}) {
       content = content.trim();
       let reply = content;
       let loyaltyDelta = 0;
+      let appointments;
+      let effects;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
@@ -274,12 +398,31 @@ function createApp(options = {}) {
           if (typeof parsed.loyaltyDelta === "number" && Number.isFinite(parsed.loyaltyDelta)) {
             loyaltyDelta = Math.max(-2, Math.min(2, Math.round(parsed.loyaltyDelta)));
           }
+          appointments = normalizeAppointmentsMap(parsed.appointments);
+          if (parsed.effects && typeof parsed.effects === "object" && !Array.isArray(parsed.effects)) {
+            effects = parsed.effects;
+          }
         } catch (_) {
           // keep fallback reply
         }
       }
 
-      return res.json({ reply, loyaltyDelta });
+      if (appointments) {
+        const filtered = {};
+        for (const [positionId, characterId] of Object.entries(appointments)) {
+          if (!getAliveStatus(clientState, characterId)) continue;
+          filtered[positionId] = characterId;
+        }
+        appointments = Object.keys(filtered).length ? filtered : undefined;
+      }
+
+      reply = sanitizeMinisterReplyText(reply, deceasedMinisters);
+
+      const payload = { reply, loyaltyDelta };
+      if (appointments) payload.appointments = appointments;
+      if (effects) payload.effects = effects;
+      payload.ministerId = ministerId;
+      return res.json(payload);
     } catch (e) {
       return res.status(500).json({ error: e.message || "Proxy error" });
     }
@@ -422,6 +565,7 @@ function createApp(options = {}) {
   return {
     app,
     buildUserMessage,
+    sanitizeMinisterReplyText,
     getCharacters,
     getPositions,
   };
