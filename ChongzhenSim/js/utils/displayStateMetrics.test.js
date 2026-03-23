@@ -62,6 +62,7 @@ describe("displayStateMetrics", () => {
     expect(delta.prestige).toBe(3);
     expect(delta.loyalty.bi_ziyan).toBe(2);
     expect(delta.appointments).toEqual({ libu_shangshu: "bi_ziyan" });
+    expect(delta.appointmentDismissals).toEqual(["hubu_shangshu"]);
     expect(delta.characterDeath).toEqual({ wen_tiren: "处死" });
   });
 
@@ -83,6 +84,7 @@ describe("displayStateMetrics", () => {
         borderThreat: -4,
         loyalty: { bi_ziyan: 2 },
         appointments: { libu_shangshu: "bi_ziyan" },
+        appointmentDismissals: ["hubu_shangshu"],
         characterDeath: { wen_tiren: "处死" },
       },
       {
@@ -90,13 +92,20 @@ describe("displayStateMetrics", () => {
           { id: "bi_ziyan", name: "毕自严" },
           { id: "wen_tiren", name: "温体仁" },
         ],
+        positionsMeta: {
+          positions: [
+            { id: "libu_shangshu", name: "吏部尚书" },
+            { id: "hubu_shangshu", name: "户部尚书" },
+          ],
+        },
       }
     );
 
     expect(entries.find((item) => item.label === "国库")?.value).toBe(120000);
     expect(entries.find((item) => item.label === "边患")?.invertColor).toBe(true);
     expect(entries.find((item) => item.label === "毕自严 忠诚")?.value).toBe(2);
-    expect(entries.find((item) => item.label === "任命 毕自严 → libu_shangshu")?.type).toBe("text");
+    expect(entries.find((item) => item.label === "任命 毕自严 → 吏部尚书")?.type).toBe("text");
+    expect(entries.find((item) => item.label === "免去 户部尚书")?.value).toBe("已生效");
     expect(entries.find((item) => item.label === "处置 温体仁")?.value).toBe("处死");
   });
 });

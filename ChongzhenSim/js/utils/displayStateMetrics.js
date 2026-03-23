@@ -116,6 +116,21 @@ function buildAppointmentDelta(beforeState, afterState) {
   return delta;
 }
 
+function buildAppointmentDismissalDelta(beforeState, afterState) {
+  const before = beforeState?.appointments || {};
+  const after = afterState?.appointments || {};
+  const dismissals = [];
+
+  Object.entries(before).forEach(([positionId, characterId]) => {
+    if (typeof positionId !== "string" || typeof characterId !== "string") return;
+    if (!after[positionId]) {
+      dismissals.push(positionId);
+    }
+  });
+
+  return dismissals;
+}
+
 function buildCharacterDeathDelta(beforeState, afterState) {
   const before = beforeState?.characterStatus || {};
   const after = afterState?.characterStatus || {};
@@ -133,10 +148,12 @@ export function buildOutcomeDisplayDelta(beforeState, afterState) {
   const delta = buildDisplayStateDelta(beforeState, afterState);
   const loyalty = buildLoyaltyDelta(beforeState, afterState);
   const appointments = buildAppointmentDelta(beforeState, afterState);
+  const appointmentDismissals = buildAppointmentDismissalDelta(beforeState, afterState);
   const characterDeath = buildCharacterDeathDelta(beforeState, afterState);
 
   if (Object.keys(loyalty).length) delta.loyalty = loyalty;
   if (Object.keys(appointments).length) delta.appointments = appointments;
+  if (appointmentDismissals.length) delta.appointmentDismissals = appointmentDismissals;
   if (Object.keys(characterDeath).length) delta.characterDeath = characterDeath;
   return delta;
 }
@@ -146,6 +163,7 @@ export function hasOutcomeDisplayDelta(delta) {
   if (DISPLAY_STATE_METRICS.some((metric) => typeof delta[metric.key] === "number" && delta[metric.key] !== 0)) return true;
   if (delta.loyalty && Object.keys(delta.loyalty).length > 0) return true;
   if (delta.appointments && Object.keys(delta.appointments).length > 0) return true;
+  if (Array.isArray(delta.appointmentDismissals) && delta.appointmentDismissals.length > 0) return true;
   if (delta.characterDeath && Object.keys(delta.characterDeath).length > 0) return true;
   return false;
 }
@@ -176,6 +194,13 @@ export function mergeOutcomeDisplayDelta(baseDelta, patchDelta) {
     merged.appointments = { ...(merged.appointments || {}), ...patchDelta.appointments };
   }
 
+  if (Array.isArray(patchDelta?.appointmentDismissals)) {
+    const existing = Array.isArray(merged.appointmentDismissals) ? merged.appointmentDismissals : [];
+    const combined = Array.from(new Set([...existing, ...patchDelta.appointmentDismissals]));
+    if (combined.length) merged.appointmentDismissals = combined;
+    else delete merged.appointmentDismissals;
+  }
+
   if (patchDelta?.characterDeath && typeof patchDelta.characterDeath === "object") {
     merged.characterDeath = { ...(merged.characterDeath || {}), ...patchDelta.characterDeath };
   }
@@ -200,6 +225,12 @@ export function buildOutcomeDisplayEntries(effects, state) {
 
   const ministers = state?.ministers || [];
   const nameById = buildNameById(ministers);
+  const positions = Array.isArray(state?.positionsMeta?.positions) ? state.positionsMeta.positions : [];
+  const positionNameById = Object.fromEntries(
+    positions
+      .filter((position) => position && typeof position.id === "string")
+      .map((position) => [position.id, position.name || position.id])
+  );
 
   if (effects.loyalty && typeof effects.loyalty === "object") {
     Object.entries(effects.loyalty).forEach(([id, delta]) => {
@@ -215,9 +246,21 @@ export function buildOutcomeDisplayEntries(effects, state) {
 
   if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
     Object.entries(effects.appointments).forEach(([positionId, characterId]) => {
+      const positionLabel = positionNameById[positionId] || positionId;
       entries.push({
         type: "text",
-        label: `任命 ${nameById[characterId] || characterId} → ${positionId}`,
+        label: `任命 ${nameById[characterId] || characterId} → ${positionLabel}`,
+        value: "已生效",
+      });
+    });
+  }
+
+  if (Array.isArray(effects.appointmentDismissals)) {
+    effects.appointmentDismissals.forEach((positionId) => {
+      const positionLabel = positionNameById[positionId] || positionId;
+      entries.push({
+        type: "text",
+        label: `免去 ${positionLabel}`,
         value: "已生效",
       });
     });
