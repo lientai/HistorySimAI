@@ -9,6 +9,7 @@ import { AVAILABLE_AVATAR_NAMES, buildNameById } from "../utils/sharedConstants.
 import { showError, showSuccess } from "../utils/toast.js";
 import { applyEffects as applyEffectsModule } from "../utils/effectsProcessor.js";
 import { buildOutcomeDisplayDelta, captureDisplayStateSnapshot, hasOutcomeDisplayDelta, renderOutcomeDisplayCard } from "../utils/displayStateMetrics.js";
+import { KEJU_STAGE_LABELS, advanceKejuSession, appendTalentReserve, applyKejuAppointLoyaltyBonus, getKejuStateSnapshot, getSeasonLabelByMonth, mergeKejuState } from "../systems/kejuSystem.js";
 
 let currentMinisterChatId = null;
 let tagsConfigCache = null;
@@ -38,6 +39,323 @@ const courtModuleUIState = {
 };
 
 const COURT_SWIPE_HINT_STORAGE_KEY = "courtSwipeHintSeenV1";
+
+function patchKejuState(partial) {
+  const state = getState();
+  setState({
+    keju: mergeKejuState(state, partial),
+  });
+}
+
+async function showKejuPanel() {
+  const app = document.getElementById("app");
+  if (!app) return;
+
+  const currentState = getState();
+  const kejuState = getKejuStateSnapshot(currentState);
+
+  let overlay = document.getElementById("keju-panel-overlay");
+  if (overlay) overlay.remove();
+  overlay = document.createElement("div");
+  overlay.id = "keju-panel-overlay";
+  overlay.className = "relationship-panel-overlay";
+
+  const card = document.createElement("div");
+  card.className = "relationship-panel-card keju-panel-card";
+
+  const header = document.createElement("div");
+  header.className = "relationship-panel-card__header";
+  const title = document.createElement("div");
+  title.className = "relationship-panel-card__title";
+  title.textContent = "科举大典";
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "relationship-panel-card__close";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement("div");
+  body.className = "relationship-panel-card__body keju-panel-body";
+
+  const season = getSeasonLabelByMonth(Number(currentState.currentMonth) || 1);
+  const stageLabel = KEJU_STAGE_LABELS[kejuState.stage] || KEJU_STAGE_LABELS.idle;
+
+  const summary = document.createElement("div");
+  summary.className = "keju-summary";
+  summary.innerHTML = `
+    <div class="keju-summary__meta">崇祯${currentState.currentYear || 1}年 · ${currentState.currentMonth || 1}月 · ${season}</div>
+    <div class="keju-summary__meta">当前阶段：${stageLabel}</div>
+    <div class="keju-summary__meta">在册考生：${kejuState.candidatePool.length} 人</div>
+    <div class="keju-summary__meta">礼部科举声望：${kejuState.bureauMomentum}</div>
+    <div class="keju-summary__meta">人才储备质量：${kejuState.reserveQuality}</div>
+    <div class="keju-summary__note">科举模块当前仅提供人才选拔与推荐，不自动任命，不推进回合。</div>
+  `;
+
+  const steps = document.createElement("div");
+  steps.className = "keju-steps";
+  const stageOrder = ["xiangshi", "huishi", "dianshi"];
+  stageOrder.forEach((stage, idx) => {
+    const step = document.createElement("div");
+    step.className = "keju-step";
+    const active = stageOrder.indexOf(kejuState.stage) >= idx || kejuState.stage === "published";
+    if (active) step.classList.add("is-active");
+    step.textContent = `${idx + 1}. ${KEJU_STAGE_LABELS[stage].replace("进行中", "")}`;
+    steps.appendChild(step);
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "keju-actions";
+
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "keju-btn keju-btn--primary";
+  if (kejuState.stage === "idle") {
+    nextBtn.textContent = "开启乡试";
+  } else if (kejuState.stage === "xiangshi") {
+    nextBtn.textContent = "执行会试遴选";
+  } else if (kejuState.stage === "huishi") {
+    nextBtn.textContent = "执行殿试遴选";
+  } else if (kejuState.stage === "dianshi") {
+    nextBtn.textContent = "放榜";
+  } else {
+    nextBtn.textContent = "本科已放榜";
+    nextBtn.disabled = true;
+  }
+
+  nextBtn.addEventListener("click", async () => {
+    const latestState = getState();
+    const latestKeju = getKejuStateSnapshot(latestState);
+    const charactersData = latestKeju.stage === "idle" ? await loadJSON("data/characters.json") : { characters: [] };
+    const nextKeju = advanceKejuSession(
+      latestKeju,
+      { state: latestState, characters: charactersData?.characters || [] },
+      { formatName: getDisplayName, isAliveCharacter }
+    );
+    patchKejuState(nextKeju);
+    if (latestKeju.stage === "idle") {
+      showSuccess("乡试已开启，考生名单已入册。", 1800);
+    } else if (latestKeju.stage === "xiangshi") {
+      showSuccess("会试候选名单已生成。", 1800);
+    } else if (latestKeju.stage === "huishi") {
+      showSuccess("殿试候选名单已生成。", 1800);
+    } else if (latestKeju.stage === "dianshi") {
+      showSuccess("殿试放榜完成。", 1800);
+    }
+    showKejuPanel();
+  });
+
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "keju-btn keju-btn--ghost";
+  resetBtn.textContent = "重开本届";
+  resetBtn.addEventListener("click", () => {
+    patchKejuState({
+      stage: "idle",
+      candidatePool: [],
+      publishedList: [],
+      bureauMomentum: 52,
+      reserveQuality: 0,
+      talentReserve: [],
+      note: "",
+    });
+    showKejuPanel();
+  });
+
+  actions.appendChild(nextBtn);
+  actions.appendChild(resetBtn);
+
+  if (kejuState.stage === "published" && kejuState.publishedList.length) {
+    const reserveBtn = document.createElement("button");
+    reserveBtn.type = "button";
+    reserveBtn.className = "keju-btn keju-btn--ghost";
+    reserveBtn.textContent = "加入待录用名单";
+    reserveBtn.addEventListener("click", async () => {
+      if (!positionsCache) {
+        try {
+          positionsCache = await loadJSON("data/positions.json");
+        } catch (_e) {
+          positionsCache = { positions: [], departments: [] };
+        }
+      }
+      const latestState = getState();
+      const latestKeju = getKejuStateSnapshot(latestState);
+      patchKejuState({
+        talentReserve: appendTalentReserve(
+          latestKeju,
+          positionsCache,
+          latestState.appointments || {},
+          latestState.currentYear || 1,
+          latestState.currentMonth || 1
+        ),
+        note: "前三甲已加入待录用名单（仅记录，不自动任命）。",
+      });
+      showSuccess("已写入待录用名单。", 1800);
+      showKejuPanel();
+    });
+    actions.appendChild(reserveBtn);
+  }
+
+  const list = document.createElement("div");
+  list.className = "keju-candidate-list";
+  const candidates = kejuState.candidatePool;
+  if (!candidates.length) {
+    const empty = document.createElement("div");
+    empty.className = "keju-empty";
+    empty.textContent = "尚未开科。点击“开启乡试”生成本届考生。";
+    list.appendChild(empty);
+  } else {
+    candidates.forEach((candidate, idx) => {
+      const row = document.createElement("div");
+      row.className = "keju-candidate-row";
+      if (kejuState.stage === "published" && idx < 3) {
+        row.classList.add("is-top");
+      }
+      const rankLabel = kejuState.stage === "published"
+        ? (idx === 0 ? "状元" : idx === 1 ? "榜眼" : idx === 2 ? "探花" : `${idx + 1}`)
+        : `第${idx + 1}名`;
+      row.innerHTML = `
+        <div class="keju-candidate-row__rank">${rankLabel}</div>
+        <div class="keju-candidate-row__main">
+          <div class="keju-candidate-row__name">${candidate.name}</div>
+          <div class="keju-candidate-row__meta">${candidate.factionLabel || "无党籍"} · 文采 ${candidate.literary} · 德行 ${candidate.morality} · 潜力 ${candidate.potential} · 总评 ${candidate.total}</div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  const reserve = document.createElement("div");
+  reserve.className = "keju-reserve";
+  const reserveList = Array.isArray(kejuState.talentReserve) ? kejuState.talentReserve : [];
+  if (!reserveList.length) {
+    reserve.textContent = "待录用名单：暂无";
+  } else {
+    const reserveTitle = document.createElement("div");
+    reserveTitle.className = "keju-reserve__title";
+    reserveTitle.textContent = "待录用名单";
+    reserve.appendChild(reserveTitle);
+
+    reserveList.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "keju-reserve-row";
+
+      const meta = document.createElement("div");
+      meta.className = "keju-reserve-row__meta";
+      meta.textContent = `${item.candidateName} → ${item.positionName}`;
+
+      const actionWrap = document.createElement("div");
+      actionWrap.className = "keju-reserve-row__actions";
+
+      const appointBtn = document.createElement("button");
+      appointBtn.type = "button";
+      appointBtn.className = "keju-btn keju-btn--ghost keju-reserve-row__appoint";
+      appointBtn.textContent = item.positionId ? "任命" : "待定";
+      if (!item.positionId || (currentState.appointments || {})[item.positionId]) {
+        appointBtn.disabled = true;
+      }
+
+      appointBtn.addEventListener("click", async () => {
+        if (!item.positionId) return;
+        const latestState = getState();
+        if ((latestState.appointments || {})[item.positionId]) {
+          showError("该官职已有人在任，请重新生成推荐名单。", 2200);
+          showKejuPanel();
+          return;
+        }
+        if (!isAliveCharacter(latestState, item.candidateId)) {
+          showError("该人物已故，无法任命。", 2200);
+          return;
+        }
+        appointBtn.disabled = true;
+        appointBtn.textContent = "任命中...";
+        try {
+          const result = await requestAppoint(item.positionId, item.candidateId);
+          if (result?.success === false) {
+            showError(`任命失败: ${result.error || "未知错误"}`);
+            showKejuPanel();
+            return;
+          }
+          const appointments = { ...(latestState.appointments || {}) };
+          for (const [posId, charId] of Object.entries(appointments)) {
+            if (charId === item.candidateId) delete appointments[posId];
+          }
+          appointments[item.positionId] = item.candidateId;
+          const loyaltyWithBonus = applyKejuAppointLoyaltyBonus(latestState.loyalty || {}, item.candidateId, 6);
+          const updatedReserve = reserveList.filter((entry) => entry.candidateId !== item.candidateId);
+          const currentSnapshot = getKejuStateSnapshot(getState());
+          setState({
+            appointments,
+            loyalty: loyaltyWithBonus,
+            keju: mergeKejuState(getState(), {
+              talentReserve: updatedReserve,
+              bureauMomentum: Math.min(100, (currentSnapshot.bureauMomentum || 0) + 1),
+              note: `${item.candidateName} 已授 ${item.positionName}，忠诚度提升。`,
+            }),
+          });
+          showSuccess("科举入仕已生效。", 1800);
+          showKejuPanel();
+          rerenderCourtMainView();
+        } catch (error) {
+          showError(`任命失败: ${error.message}`);
+          showKejuPanel();
+        }
+      });
+
+      const adjustBtn = document.createElement("button");
+      adjustBtn.type = "button";
+      adjustBtn.className = "keju-btn keju-btn--ghost keju-reserve-row__adjust";
+      adjustBtn.textContent = "调岗推荐";
+      adjustBtn.addEventListener("click", () => {
+        const latestState = getState();
+        if (!isAliveCharacter(latestState, item.candidateId)) {
+          showError("该人物已故，无法调岗。", 2200);
+          return;
+        }
+        overlay.remove();
+        openInlineAppointByMinister(item.candidateId);
+      });
+
+      row.appendChild(meta);
+      actionWrap.appendChild(appointBtn);
+      actionWrap.appendChild(adjustBtn);
+      row.appendChild(actionWrap);
+      reserve.appendChild(row);
+    });
+  }
+
+  const note = document.createElement("div");
+  note.className = "keju-note";
+  note.textContent = kejuState.note || "";
+
+  body.appendChild(summary);
+  body.appendChild(steps);
+  body.appendChild(actions);
+  body.appendChild(list);
+  body.appendChild(reserve);
+  body.appendChild(note);
+
+  const footer = document.createElement("div");
+  footer.className = "relationship-panel-card__footer";
+  const closeBtnBottom = document.createElement("button");
+  closeBtnBottom.type = "button";
+  closeBtnBottom.className = "relationship-panel-card__footer-close";
+  closeBtnBottom.textContent = "关闭";
+  closeBtnBottom.addEventListener("click", () => overlay.remove());
+  footer.appendChild(closeBtnBottom);
+
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  overlay.appendChild(card);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) overlay.remove();
+  });
+
+  app.appendChild(overlay);
+}
 
 function isAliveCharacter(state, characterId) {
   return state?.characterStatus?.[characterId]?.isAlive !== false;
@@ -1165,8 +1483,17 @@ function renderMinisterList(container, state, tagsConfig) {
   relBtn.textContent = "派系";
   relBtn.addEventListener("click", () => showFactionPanel(state));
 
+  const kejuBtn = document.createElement("button");
+  kejuBtn.type = "button";
+  kejuBtn.className = "court-relations-btn court-relations-btn--keju";
+  kejuBtn.textContent = "科举";
+  kejuBtn.addEventListener("click", () => {
+    showKejuPanel();
+  });
+
   actions.appendChild(ministerBtn);
   actions.appendChild(relBtn);
+  actions.appendChild(kejuBtn);
   header.appendChild(title);
   header.appendChild(actions);
   card.appendChild(header);
