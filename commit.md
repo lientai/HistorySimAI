@@ -688,3 +688,18 @@
   - coreGameplaySystem.test 新增用例，验证 execution 缩放会保留 appointments/appointmentDismissals/characterDeath，且仍正常缩放数值字段。
 - 自检结果：
   - Root：`cd ChongzhenSim && npm run test -- js/systems/coreGameplaySystem.test.js js/utils/appointmentEffects.test.js server/index.test.js js/api/validators.test.js js/utils/displayStateMetrics.test.js js/utils/effectsProcessor.test.js` 通过（90/90）
+
+#### 6.1.28 f4bcb55 · fix(edict): show appointment labels with Chinese position names
+- 全哈希：`f4bcb554b121aa9d14f285d54f57d9d8a536a400`
+- 时间：2026-03-23
+- 分支：my-feature-branch
+- 作者：JINTIAN-LIU
+- 类型：fix
+- 变更文件：
+  - ChongzhenSim/js/utils/displayStateMetrics.js
+  - ChongzhenSim/js/utils/displayStateMetrics.test.js
+- 玩法兼容与修复说明：
+  - 诏书数值面板中的任命/免职展示改为优先使用职位中文名，避免出现职位ID拼音字符串。
+  - 共享展示链路新增 appointmentDismissals 的展示与合并去重支持，文案统一为“免去 职位中文名”。
+- 自检结果：
+  - Root：`cd ChongzhenSim && npm run test -- js/utils/displayStateMetrics.test.js js/utils/appointmentEffects.test.js js/systems/coreGameplaySystem.test.js server/index.test.js js/api/validators.test.js` 通过（63/63）
