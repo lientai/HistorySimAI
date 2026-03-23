@@ -1224,6 +1224,18 @@ export function scaleEffectsByExecution(effects, state) {
 
   const scaled = {};
   for (const [key, value] of Object.entries(effects)) {
+    if (key === "appointments" && value && typeof value === "object" && !Array.isArray(value)) {
+      scaled.appointments = { ...value };
+      continue;
+    }
+    if (key === "appointmentDismissals" && Array.isArray(value)) {
+      scaled.appointmentDismissals = value.slice();
+      continue;
+    }
+    if (key === "characterDeath" && value && typeof value === "object" && !Array.isArray(value)) {
+      scaled.characterDeath = { ...value };
+      continue;
+    }
     if (key === "hostileDamage" && value && typeof value === "object") {
       const hostileDamage = {};
       for (const [target, delta] of Object.entries(value)) {
@@ -1244,7 +1256,11 @@ export function scaleEffectsByExecution(effects, state) {
     }
     if (typeof value === "number") {
       scaled[key] = roundScaled(value, ratio);
+      continue;
     }
+
+    // Preserve non-numeric non-scaling fields to avoid dropping gameplay channels.
+    scaled[key] = value;
   }
   return scaled;
 }

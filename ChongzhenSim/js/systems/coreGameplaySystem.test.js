@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveHostileForcesAfterChoice } from "./coreGameplaySystem.js";
+import { resolveHostileForcesAfterChoice, scaleEffectsByExecution } from "./coreGameplaySystem.js";
 
 function createBaseState() {
   return {
@@ -53,5 +53,45 @@ describe("resolveHostileForcesAfterChoice", () => {
     expect(out).not.toBeNull();
     expect(out.statePatch.hostileForces[0].power).toBeLessThan(70);
     expect(out.statePatch.systemNewsToday.some((item) => String(item.title || "").includes("军事开拓"))).toBe(true);
+  });
+});
+
+describe("scaleEffectsByExecution", () => {
+  it("should preserve appointment-related non-numeric effects", () => {
+    const scaled = scaleEffectsByExecution(
+      {
+        appointments: { hubu_shangshu: "wen_tiren" },
+        appointmentDismissals: ["neige_shoufu"],
+        characterDeath: { wen_tiren: "处死" },
+      },
+      {
+        prestige: 30,
+        unlockedPolicies: [],
+        playerAbilities: { politics: 0 },
+      }
+    );
+
+    expect(scaled.appointments).toEqual({ hubu_shangshu: "wen_tiren" });
+    expect(scaled.appointmentDismissals).toEqual(["neige_shoufu"]);
+    expect(scaled.characterDeath).toEqual({ wen_tiren: "处死" });
+  });
+
+  it("should still scale numeric effects", () => {
+    const scaled = scaleEffectsByExecution(
+      {
+        treasury: -100000,
+        civilMorale: 10,
+        appointments: { hubu_shangshu: "wen_tiren" },
+      },
+      {
+        prestige: 30,
+        unlockedPolicies: [],
+        playerAbilities: { politics: 0 },
+      }
+    );
+
+    expect(typeof scaled.treasury).toBe("number");
+    expect(typeof scaled.civilMorale).toBe("number");
+    expect(scaled.appointments).toEqual({ hubu_shangshu: "wen_tiren" });
   });
 });
