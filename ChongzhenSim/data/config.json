@@ -4,7 +4,7 @@
   "startYear": 3,
   "startMonth": 4,
   "storyMode": "llm",
-  "apiBase": "http://172.20.10.3:3002",
+  "apiBase": "http://localhost:3002",
   "phases": ["morning", "afternoon", "evening"],
   "phaseLabels": {
     "morning": "早朝",
