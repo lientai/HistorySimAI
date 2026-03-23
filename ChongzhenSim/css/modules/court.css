@@ -519,12 +519,6 @@
   font-weight: 600;
 }
 
-.court-relations-btn--keju {
-  border-color: rgba(176, 138, 69, 0.6);
-  color: #8f5a2f;
-  background: linear-gradient(135deg, #fef8ec 0%, #f8ecd7 100%);
-}
-
 /* 大臣列表 */
 .minister-list {
   display: flex;

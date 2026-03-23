@@ -811,7 +811,17 @@ async function showAppointmentDialogByMinister(ministerId) {
       }
       newAppointments[selectedPosition.id] = ministerId;
 
-      setState({ appointments: newAppointments });
+      const kejuSnapshot = getKejuStateSnapshot(s);
+      const updatedReserve = (kejuSnapshot.talentReserve || []).filter((entry) => entry.candidateId !== ministerId);
+      const patch = { appointments: newAppointments };
+      if (updatedReserve.length !== (kejuSnapshot.talentReserve || []).length) {
+        patch.keju = mergeKejuState(s, {
+          talentReserve: updatedReserve,
+          note: `${getDisplayName(minister.name)} 已通过调岗推荐完成任命。`,
+        });
+      }
+
+      setState(patch);
       overlay.remove();
       const container = document.getElementById("main-view") || document.getElementById("view-container");
       if (container) {
@@ -1485,7 +1495,7 @@ function renderMinisterList(container, state, tagsConfig) {
 
   const kejuBtn = document.createElement("button");
   kejuBtn.type = "button";
-  kejuBtn.className = "court-relations-btn court-relations-btn--keju";
+  kejuBtn.className = "court-relations-btn";
   kejuBtn.textContent = "科举";
   kejuBtn.addEventListener("click", () => {
     showKejuPanel();
