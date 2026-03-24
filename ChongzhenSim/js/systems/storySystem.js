@@ -1310,7 +1310,6 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   }
 
   const quarterPanel = renderQuarterAgendaPanel(container, state, onChoice, options);
-  if (quarterPanel) currentWrap.appendChild(quarterPanel);
 
   const textBlock = document.createElement("div");
   textBlock.className = "edict-block";
@@ -1373,6 +1372,9 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
     showCustomEdictPanel(onChoice, state);
   });
   actionsWrap.appendChild(customBtn);
+
+  // 季度奏折面板后置到剧情与标注区域之后、选项按钮之前
+  if (quarterPanel) currentWrap.appendChild(quarterPanel);
   
   currentWrap.appendChild(actionsWrap);
 }
