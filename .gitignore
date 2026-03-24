@@ -43,6 +43,10 @@ coverage/
 .tmp/
 .temp/
 
+# Local/private markdown notes
+/commit.md
+/EXAMPLE*.md
+
 # Local development tools (Trae IDE / GSD framework)
 .agents/
 .trae/
