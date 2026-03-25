@@ -10,6 +10,7 @@
 本项目由 **Funloom AI** 强力支持，基于 Funloom 推出的 AI 文游创作工具开发实现，让历史模拟类文字游戏的创作与体验更具沉浸感和趣味性。
 
 🔗 **Funloom AI 官方地址**：https://www.funloom.ai/
+
 🔗 **在线预览游戏**：https://funloom.kurangames.com/funloom/createGame?mode=stats&gameId=18ec512c15fbf16074536a423aaaaedb
 
 ---
