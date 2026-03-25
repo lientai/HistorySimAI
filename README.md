@@ -11,7 +11,7 @@
 
 🔗 **Funloom AI 官方地址**：https://www.funloom.ai/
 
-🔗 **在线预览游戏**：https://funloom.kurangames.com/funloom/createGame?mode=stats&gameId=18ec512c15fbf16074536a423aaaaedb
+🔗 **在线预览游戏**：https://funloom.kurangames.com/funloom/game/18ec512c15fbf16074536a423aaaaedb
 
 ---
 
