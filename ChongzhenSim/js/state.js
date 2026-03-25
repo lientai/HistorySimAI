@@ -52,6 +52,15 @@ const initialState = {
 
   courtChats: {},
   ministerUnread: {},
+  keju: {
+    stage: "idle",
+    candidatePool: [],
+    publishedList: [],
+    talentReserve: [],
+    bureauMomentum: 52,
+    reserveQuality: 0,
+    note: "",
+  },
 
   newsToday: [],
   newsHistory: {},

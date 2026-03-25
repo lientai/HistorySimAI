@@ -548,6 +548,12 @@
   background: linear-gradient(135deg, #fff9f5 0%, #faf0e8 100%);
 }
 
+.minister-item--deceased {
+  opacity: 0.78;
+  background: linear-gradient(135deg, #f8f5ef 0%, #f1ece3 100%);
+  border-style: dashed;
+}
+
 .minister-item__badge {
   display: inline-block;
   min-width: 8px;
@@ -619,6 +625,22 @@
   font-weight: 700;
   color: var(--color-text-main);
   line-height: 1.3;
+}
+
+.minister-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.minister-status-tag--deceased {
+  color: #7a4b25;
+  border: 1px solid #d6b48f;
+  background: #f8e9d8;
 }
 
 .minister-role {
@@ -1082,6 +1104,227 @@
   background-color: var(--color-block-bg);
   color: var(--color-accent);
   font-size: 11px;
+}
+
+/* 科举面板 */
+.keju-panel-card {
+  width: min(92vw, 620px);
+  max-width: 620px;
+}
+
+.keju-panel-body {
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+.keju-summary {
+  border-radius: 10px;
+  border: 1px solid #e4d4b9;
+  background: linear-gradient(180deg, #fffaf2 0%, #f8efdf 100%);
+  padding: 10px;
+}
+
+.keju-summary__meta {
+  font-size: 12px;
+  color: #5a3a27;
+  line-height: 1.5;
+}
+
+.keju-summary__note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #7d6a55;
+}
+
+.keju-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.keju-step {
+  text-align: center;
+  font-size: 11px;
+  color: #7a6a5e;
+  border-radius: 8px;
+  padding: 6px 4px;
+  border: 1px dashed #d8c3a2;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.keju-step.is-active {
+  border-style: solid;
+  border-color: #b48f59;
+  background: linear-gradient(135deg, #fff7e8 0%, #f2dfbe 100%);
+  color: #7a431f;
+  font-weight: 700;
+}
+
+.keju-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keju-btn {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.keju-btn--primary {
+  background: linear-gradient(135deg, #8b0000 0%, #a93a22 100%);
+  border-color: #8b0000;
+  color: #f8e7c5;
+}
+
+.keju-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keju-btn--ghost {
+  border-color: #d0b182;
+  color: #6b4526;
+  background: #fff8eb;
+}
+
+.keju-btn--ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.keju-candidate-list {
+  border: 1px solid #e3d4be;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keju-candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 150, 100, 0.2);
+  background: #fffdf9;
+  padding: 8px;
+}
+
+.keju-candidate-row.is-top {
+  border-color: #c89f57;
+  box-shadow: inset 0 0 0 1px rgba(200, 159, 87, 0.25);
+  background: linear-gradient(135deg, #fffaf0 0%, #f8ecd3 100%);
+}
+
+.keju-candidate-row__rank {
+  min-width: 54px;
+  border-radius: 6px;
+  background: rgba(180, 150, 100, 0.2);
+  color: #6a4222;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 4px;
+}
+
+.keju-candidate-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.keju-candidate-row__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #472a1a;
+}
+
+.keju-candidate-row__meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #6d5a47;
+  line-height: 1.35;
+}
+
+.keju-empty {
+  font-size: 12px;
+  color: #7d6a55;
+  text-align: center;
+  padding: 14px 10px;
+}
+
+.keju-reserve,
+.keju-note {
+  font-size: 11px;
+  color: #6f5a44;
+  line-height: 1.5;
+}
+
+.keju-reserve {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #e6d6bb;
+  background: rgba(255, 251, 243, 0.92);
+}
+
+.keju-reserve__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a3922;
+}
+
+.keju-reserve-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: #fffdf8;
+  border: 1px solid rgba(180, 150, 100, 0.18);
+}
+
+.keju-reserve-row__meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: #6d563f;
+  line-height: 1.45;
+}
+
+.keju-reserve-row__appoint {
+  flex-shrink: 0;
+  min-width: 56px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.keju-reserve-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.keju-reserve-row__adjust {
+  min-width: 66px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-color: #bba06f;
+  color: #5e4527;
+  background: #fdf6e6;
 }
 
 .relationship-graph {

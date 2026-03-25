@@ -15,6 +15,7 @@ import {
   calculateLoyaltyDelta
 } from './effectsProcessor.js';
 
+
 describe('applyEffects', () => {
   it('should return unchanged state when effects is null', () => {
     const nation = { treasury: 500000, grain: 30000 };

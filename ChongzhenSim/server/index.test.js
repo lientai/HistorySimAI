@@ -117,6 +117,28 @@ describe('API Endpoints', () => {
       expect(res.body.error).toBe('minister not found');
     });
 
+    it('should return 400 when minister is deceased in client state', async () => {
+      const { app } = createApp({
+        config: { LLM_API_KEY: 'test-key' },
+        charactersData: mockCharactersData,
+        allowMissingConfig: true
+      });
+
+      const res = await request(app)
+        .post('/api/chongzhen/ministerChat')
+        .send({
+          ministerId: 'bi_ziyan',
+          history: [],
+          state: {
+            characterStatus: {
+              bi_ziyan: { isAlive: false, deathReason: '处死' }
+            }
+          }
+        });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('minister is deceased');
+    });
+
     it('should return 500 when charactersData is not loaded', async () => {
       const { app } = createApp({ 
         config: { LLM_API_KEY: 'test-key' }, 
@@ -242,13 +264,19 @@ describe('buildUserMessage', () => {
         nation: { treasury: 500000, grain: 30000 }
       },
       unlockedPolicies: ['civil_tax_reform', 'military_border_fort'],
+      unlockedPolicyTitleMap: {
+        civil_tax_reform: '税制改革',
+      },
       customPolicies: [{ id: 'cp_1', name: '赈济先行' }],
     };
     const message = buildUserMessage(body);
     expect(message).toContain('已实施国策');
-    expect(message).toContain('civil_tax_reform');
+    expect(message).toContain('税制改革');
+    expect(message).not.toContain('civil_tax_reform');
+    expect(message).toContain('military_border_fort');
     expect(message).toContain('赈济先行');
     expect(message).toContain('纳入全局推理');
+    expect(message).toContain('所有输出文案必须为中文');
   });
 
   it('should format treasury status correctly', () => {
@@ -303,6 +331,111 @@ describe('buildUserMessage', () => {
     const message = buildUserMessage(body);
     expect(message).toContain('bi_ziyan');
     expect(message).toContain('毕自严');
+  });
+
+  it('should include court roster snapshot constraints for story inference', () => {
+    const { buildUserMessage } = createTestApp();
+    const body = {
+      state: {
+        currentDay: 4,
+        currentYear: 3,
+        currentMonth: 5,
+        currentPhase: 'morning',
+        nation: { treasury: 500000, grain: 30000 },
+        appointments: { hubu_shangshu: 'bi_ziyan' },
+        characterStatus: { wen_tiren: { isAlive: false, deathReason: '处死' } },
+      },
+      lastChoiceId: 'choice_1',
+      lastChoiceText: '整顿吏治'
+    };
+    const message = buildUserMessage(body);
+    expect(message).toContain('朝堂任职快照');
+    expect(message).toContain('在任且在世');
+    expect(message).toContain('在世未任');
+    expect(message).toContain('已故');
+  });
+
+  it('should reflect manual court appointments in next-turn minister role context', () => {
+    const { buildUserMessage } = createTestApp();
+    const body = {
+      state: {
+        currentDay: 5,
+        currentYear: 3,
+        currentMonth: 6,
+        currentPhase: 'morning',
+        nation: { treasury: 500000, grain: 30000 },
+        appointments: { hubu_shangshu: 'wen_tiren' },
+      },
+      lastChoiceId: 'choice_1',
+      lastChoiceText: '整顿户部'
+    };
+    const message = buildUserMessage(body);
+    expect(message).toContain('wen_tiren（温体仁，户部尚书）');
+  });
+});
+
+describe('sanitizeMinisterReplyText', () => {
+  const createTestApp = () => createApp({
+    config: {},
+    charactersData: mockCharactersData,
+    allowMissingConfig: true
+  });
+
+  it('should replace deceased minister names in reply text', () => {
+    const { sanitizeMinisterReplyText } = createTestApp();
+    const out = sanitizeMinisterReplyText('温体仁已伏法，温体仁旧党尽除。', [
+      { id: 'wen_tiren', name: '温体仁', reason: '处死' },
+    ]);
+    expect(out).toBe('旧臣已伏法，旧臣旧党尽除。');
+  });
+
+  it('should keep text unchanged when no deceased list', () => {
+    const { sanitizeMinisterReplyText } = createTestApp();
+    const input = '毕自严已奉诏办理户部钱粮。';
+    const out = sanitizeMinisterReplyText(input, []);
+    expect(out).toBe(input);
+  });
+});
+
+describe('sanitizeStoryPayloadLanguage', () => {
+  const createTestApp = () => createApp({
+    config: {},
+    charactersData: mockCharactersData,
+    allowMissingConfig: true
+  });
+
+  it('should replace policy IDs in visible story fields', () => {
+    const { sanitizeStoryPayloadLanguage } = createTestApp();
+    const payload = {
+      storyParagraphs: ['已推行 civil_tax_reform，百官议论纷纷。'],
+      choices: [
+        { id: 'choice_1', text: '继续推进 civil_tax_reform', hint: '配套 military_border_defense' }
+      ],
+      news: 'civil_tax_reform 引发户部震动',
+    };
+    const map = {
+      civil_tax_reform: '税制改革',
+      military_border_defense: '守边固防',
+    };
+
+    const out = sanitizeStoryPayloadLanguage(payload, map);
+    expect(out.storyParagraphs[0]).toContain('税制改革');
+    expect(out.storyParagraphs[0]).not.toContain('civil_tax_reform');
+    expect(out.choices[0].text).toContain('税制改革');
+    expect(out.choices[0].hint).toContain('守边固防');
+    expect(out.news).toContain('税制改革');
+  });
+
+  it('should keep choice id unchanged while sanitizing text', () => {
+    const { sanitizeStoryPayloadLanguage } = createTestApp();
+    const payload = {
+      choices: [
+        { id: 'civil_tax_reform_plan', text: '颁行 civil_tax_reform' }
+      ],
+    };
+    const out = sanitizeStoryPayloadLanguage(payload, { civil_tax_reform: '税制改革' });
+    expect(out.choices[0].id).toBe('civil_tax_reform_plan');
+    expect(out.choices[0].text).toBe('颁行 税制改革');
   });
 });
 

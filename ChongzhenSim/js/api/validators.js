@@ -181,6 +181,32 @@ export function normalizeStoryPayload(parsed, state) {
 }
 
 export function parseMinisterReplyPayload(payloadText) {
+  function normalizeAppointmentsMap(raw) {
+    if (!raw) return undefined;
+    if (!Array.isArray(raw)) {
+      if (typeof raw !== "object") return undefined;
+      const result = {};
+      for (const [positionId, characterId] of Object.entries(raw)) {
+        if (typeof positionId !== "string" || typeof characterId !== "string") continue;
+        const p = positionId.trim();
+        const c = characterId.trim();
+        if (!p || !c) continue;
+        result[p] = c;
+      }
+      return Object.keys(result).length ? result : undefined;
+    }
+
+    const result = {};
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const positionId = typeof item.positionId === "string" ? item.positionId.trim() : "";
+      const characterId = typeof item.characterId === "string" ? item.characterId.trim() : "";
+      if (!positionId || !characterId) continue;
+      result[positionId] = characterId;
+    }
+    return Object.keys(result).length ? result : undefined;
+  }
+
   let data;
   try {
     data = JSON.parse(payloadText);
@@ -197,11 +223,34 @@ export function parseMinisterReplyPayload(payloadText) {
       ? Math.max(-2, Math.min(2, Math.round(data.loyaltyDelta)))
       : undefined;
 
+  const appointments = normalizeAppointmentsMap(data.appointments);
+  const effectsSource =
+    data.effects && typeof data.effects === "object" && !Array.isArray(data.effects)
+      ? data.effects
+      : (data.lastChoiceEffects && typeof data.lastChoiceEffects === "object" && !Array.isArray(data.lastChoiceEffects)
+        ? data.lastChoiceEffects
+        : null);
+
+  const effects = effectsSource ? sanitizeStoryEffects(effectsSource) : undefined;
+  if (effects && appointments) {
+    effects.appointments = appointments;
+  }
+
+  if (effects && typeof loyaltyDelta === "number" && loyaltyDelta !== 0) {
+    const baseLoyalty = effects.loyalty && typeof effects.loyalty === "object" ? { ...effects.loyalty } : {};
+    if (typeof data.ministerId === "string" && data.ministerId.trim()) {
+      baseLoyalty[data.ministerId.trim()] = (baseLoyalty[data.ministerId.trim()] || 0) + loyaltyDelta;
+    }
+    effects.loyalty = baseLoyalty;
+  }
+
   return {
     ok: true,
     value: {
       reply: data.reply,
       loyaltyDelta,
+      appointments,
+      effects,
     },
   };
 }

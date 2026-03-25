@@ -5,8 +5,10 @@ import { requestStoryTurn } from "../api/llmStory.js";
 import { sanitizeStoryEffects } from "../api/validators.js";
 import { startDanmuForEdict, stopDanmu } from "./danmuSystem.js";
 import { computeCustomPolicyQuarterBonus, getPolicyBonusSummary } from "./coreGameplaySystem.js";
-import { AVAILABLE_AVATAR_NAMES, buildNameById, NATION_LABELS, INVERT_COLOR_KEYS, PERCENT_KEYS } from "../utils/sharedConstants.js";
+import { AVAILABLE_AVATAR_NAMES, buildNameById } from "../utils/sharedConstants.js";
 import { applyEffects as applyEffectsModule } from "../utils/effectsProcessor.js";
+import { DISPLAY_STATE_METRICS, buildOutcomeDisplayDelta, captureDisplayStateSnapshot, hasOutcomeDisplayDelta, mergeOutcomeDisplayDelta, renderOutcomeDisplayCard } from "../utils/displayStateMetrics.js";
+import { normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
 
 let storyCache = { key: null, data: null };
 let lastAppliedKey = null;
@@ -123,80 +125,7 @@ export function pushCurrentTurnToHistory(state, chosenChoice, effects) {
 }
 
 function renderDeltaCard(container, effects, state, titleText = "") {
-  if (!effects) return;
-  const entries = [];
-  for (const [key, label] of Object.entries(NATION_LABELS)) {
-    if (typeof effects[key] === "number" && effects[key] !== 0) {
-      entries.push({ label, delta: effects[key], invertColor: INVERT_COLOR_KEYS.includes(key) });
-    }
-  }
-  if (effects.loyalty && typeof effects.loyalty === "object") {
-    const ministers = state.ministers || [];
-    const nameById = buildNameById(ministers);
-    for (const [id, delta] of Object.entries(effects.loyalty)) {
-      if (typeof delta === "number" && delta !== 0) {
-        entries.push({ label: (nameById[id] || id) + " 忠诚", delta, invertColor: false });
-      }
-    }
-  }
-  if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
-    const ministers = state.ministers || [];
-    const nameById = buildNameById(ministers);
-    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
-      if (typeof positionId !== "string" || typeof characterId !== "string") continue;
-      entries.push({
-        label: `任命 ${nameById[characterId] || characterId} → ${positionId}`,
-
-        delta: null,
-        invertColor: false,
-        isAppointment: true,
-      });
-    }
-  }
-  if (effects.characterDeath && typeof effects.characterDeath === "object") {
-    const ministers = state.ministers || [];
-    const nameById = buildNameById(ministers);
-    for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
-      entries.push({
-        label: `处置 ${nameById[characterId] || characterId}`,
-        delta: null,
-        invertColor: false,
-        isAppointment: true,
-        customText: typeof reason === "string" && reason ? reason : "已处置",
-      });
-    }
-  }
-  if (entries.length === 0) return;
-
-  const card = document.createElement("div");
-  card.className = "story-delta-card";
-  if (titleText) {
-    const title = document.createElement("div");
-    title.className = "story-history-label";
-    title.textContent = titleText;
-    card.appendChild(title);
-  }
-  entries.forEach(({ label, delta, invertColor, isAppointment, customText }) => {
-    const row = document.createElement("div");
-    row.className = "story-delta-row";
-    const lbl = document.createElement("span");
-    lbl.className = "story-delta-label";
-    lbl.textContent = label;
-    const val = document.createElement("span");
-    if (isAppointment) {
-      val.className = "story-delta-value story-delta-value--appointment";
-      val.textContent = customText || "已生效";
-    } else {
-      const isPositive = invertColor ? delta < 0 : delta > 0;
-      val.className = "story-delta-value " + (isPositive ? "story-delta-value--positive" : "story-delta-value--negative");
-      const sign = delta > 0 ? "+" : "";
-      val.textContent = sign + delta.toLocaleString();
-    }
-    row.appendChild(lbl);
-    row.appendChild(val);
-    card.appendChild(row);
-  });
-  container.appendChild(card);
+  renderOutcomeDisplayCard(container, effects, state, titleText);
 }
 
 function renderPseudoLines(blockEl, text) {
@@ -739,19 +668,24 @@ function mergeUniqueStrings(base, extra) {
 function applyEffects(effects) {
   if (!effects) return;
   const s = getState();
+  const normalizedEffects = normalizeAppointmentEffects(effects, {
+    positions: s.positionsMeta?.positions || [],
+    ministers: s.ministers || [],
+  }) || effects;
   const ministers = Array.isArray(s.ministers) ? s.ministers : [];
   const ministerNameById = buildNameById(ministers);
   const storylineTagsToClose = [];
   
-  const { nation: newNation, loyalty: newLoyalty } = applyEffectsModule(s.nation || {}, effects, s.loyalty || {});
+  const { nation: newNation, loyalty: newLoyalty } = applyEffectsModule(s.nation || {}, normalizedEffects, s.loyalty || {});
   setState({ nation: newNation, loyalty: newLoyalty });
 
-  if (effects.appointments && typeof effects.appointments === "object" && !Array.isArray(effects.appointments)) {
+  if (normalizedEffects.appointments && typeof normalizedEffects.appointments === "object" && !Array.isArray(normalizedEffects.appointments)) {
     const currentState = getState();
     const beforeAppointments = { ...(currentState.appointments || {}) };
     const appointments = { ...beforeAppointments };
-    for (const [positionId, characterId] of Object.entries(effects.appointments)) {
+    for (const [positionId, characterId] of Object.entries(normalizedEffects.appointments)) {
       if (typeof positionId !== "string" || typeof characterId !== "string") continue;
+      if (currentState.characterStatus?.[characterId]?.isAlive === false) continue;
       for (const [posId, charId] of Object.entries(appointments)) {
         if (charId === characterId && posId !== positionId) {
           delete appointments[posId];
@@ -771,10 +705,31 @@ function applyEffects(effects) {
     setState({ appointments });
   }
 
-  if (effects.characterDeath && typeof effects.characterDeath === "object") {
+  if (Array.isArray(normalizedEffects.appointmentDismissals) && normalizedEffects.appointmentDismissals.length) {
+    const currentState = getState();
+    const appointments = { ...(currentState.appointments || {}) };
+    const dismissSet = new Set(
+      normalizedEffects.appointmentDismissals
+        .filter((id) => typeof id === "string" && id.trim())
+        .map((id) => id.trim())
+    );
+
+    if (dismissSet.size) {
+      for (const positionId of dismissSet) {
+        const removedHolder = appointments[positionId];
+        if (removedHolder) {
+          storylineTagsToClose.push(buildMinisterStorylineTag(removedHolder, ministerNameById[removedHolder]));
+          delete appointments[positionId];
+        }
+      }
+      setState({ appointments });
+    }
+  }
+
+  if (normalizedEffects.characterDeath && typeof normalizedEffects.characterDeath === "object") {
     const currentState = getState();
     const characterStatus = { ...(currentState.characterStatus || {}) };
-    for (const [characterId, reason] of Object.entries(effects.characterDeath)) {
+    for (const [characterId, reason] of Object.entries(normalizedEffects.characterDeath)) {
       if (typeof characterId !== "string") continue;
       characterStatus[characterId] = {
         isAlive: false,
@@ -784,7 +739,7 @@ function applyEffects(effects) {
       storylineTagsToClose.push(buildMinisterStorylineTag(characterId, ministerNameById[characterId]));
     }
     const appointments = { ...(currentState.appointments || {}) };
-    for (const characterId of Object.keys(effects.characterDeath)) {
+    for (const characterId of Object.keys(normalizedEffects.characterDeath)) {
       for (const [posId, charId] of Object.entries(appointments)) {
         if (charId === characterId) {
           delete appointments[posId];
@@ -1019,8 +974,19 @@ function renderChosenChoice(container, chosenChoice) {
   container.appendChild(choiceWrap);
 }
 
+function isQuarterSettlementMonth(state) {
+  return !!(
+    state?.lastQuarterSettlement &&
+    state.lastQuarterSettlement.year === state.currentYear &&
+    state.lastQuarterSettlement.month === state.currentMonth
+  );
+}
+
 function renderStoryHistory(container, history, phaseLabels, state, renderId) {
-  for (const entry of history) {
+  const quarterSettlementMonth = isQuarterSettlementMonth(state);
+
+  for (let index = 0; index < history.length; index += 1) {
+    const entry = history[index];
     if (renderId != null && container._storyRenderId !== renderId) return false;
     
     const data = entry.data;
@@ -1049,10 +1015,28 @@ function renderStoryHistory(container, history, phaseLabels, state, renderId) {
     
     if (entry.chosenChoice && entry.chosenChoice.text) {
       renderChosenChoice(container, entry.chosenChoice);
-      renderDeltaCard(container, entry.effects, state, "本轮推演数值变动");
+      const isLatestHistoryEntry = index === history.length - 1;
+      const shouldSkipLatestDeltaInQuarter = quarterSettlementMonth && isLatestHistoryEntry;
+      if (!shouldSkipLatestDeltaInQuarter) {
+        renderDeltaCard(container, entry.displayEffects || entry.effects, state, "本轮推演数值变动");
+      }
     }
   }
   return true;
+}
+
+function mergeQuarterDisplayEffectsDedup(baseEffects, quarterEffects) {
+  const merged = { ...(baseEffects && typeof baseEffects === "object" ? baseEffects : {}) };
+
+  DISPLAY_STATE_METRICS.forEach(({ key }) => {
+    const quarterValue = quarterEffects?.[key];
+    if (typeof quarterValue !== "number" || quarterValue === 0) return;
+    if (typeof merged[key] !== "number") {
+      merged[key] = quarterValue;
+    }
+  });
+
+  return merged;
 }
 
 function renderStoryError(container, errorMessage, retryCallback) {
@@ -1306,7 +1290,13 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
       militaryStrength: settlement.effects?.militaryStrength || 0,
       corruptionLevel: settlement.effects?.corruptionLevel || 0,
     };
-    renderDeltaCard(currentWrap, settlementDisplayEffects, state, "季度结算数值变动");
+
+    const history = Array.isArray(state.storyHistory) ? state.storyHistory : [];
+    const latestHistoryEntry = history.length ? history[history.length - 1] : null;
+    const latestDisplayEffects = latestHistoryEntry?.displayEffects || latestHistoryEntry?.effects || null;
+    const mergedQuarterDisplayEffects = mergeQuarterDisplayEffectsDedup(latestDisplayEffects, settlementDisplayEffects);
+
+    renderDeltaCard(currentWrap, mergedQuarterDisplayEffects, state, "季度结算数值变动");
   }
 
   const quarterPanel = renderQuarterAgendaPanel(container, state, onChoice, options);
@@ -1394,21 +1384,28 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
   const data = await loadStoryData(state, container, renderId, onChoice, options);
   if (data == null) return;
 
-  if (data.lastChoiceEffects && state.lastChoiceId === "custom_edict") {
+  if (data.lastChoiceEffects && state.lastChoiceId != null) {
     const lastEntry = history[history.length - 1];
     if (lastEntry && lastEntry.chosenChoice) {
       const prevEffects = sanitizeStoryEffects(lastEntry.effects || null);
       const nextEffects = sanitizeStoryEffects(data.lastChoiceEffects);
       const deltaEffects = computeEffectDelta(prevEffects, nextEffects);
-      auditCustomEdictCorrection(prevEffects, nextEffects, deltaEffects);
+      if (state.lastChoiceId === "custom_edict") {
+        auditCustomEdictCorrection(prevEffects, nextEffects, deltaEffects);
+      }
 
-      // 如果 LLM 给出了更精准的数值变化，则使用差值进行调整
+      const beforeCorrectionSnapshot = captureDisplayStateSnapshot(getState());
       if (deltaEffects) {
         applyEffects(deltaEffects);
       }
+      const afterCorrectionSnapshot = captureDisplayStateSnapshot(getState());
+      const correctionDisplayEffects = buildOutcomeDisplayDelta(beforeCorrectionSnapshot, afterCorrectionSnapshot);
 
-      // 保持历史记录中的 effects 为 LLM 最终输出
       lastEntry.effects = nextEffects;
+      const mergedDisplayEffects = hasOutcomeDisplayDelta(correctionDisplayEffects)
+        ? mergeOutcomeDisplayDelta(lastEntry.displayEffects || lastEntry.effects || {}, correctionDisplayEffects)
+        : (lastEntry.displayEffects || nextEffects);
+      lastEntry.displayEffects = mergedDisplayEffects;
       const updatedHistory = [...history];
       updatedHistory[updatedHistory.length - 1] = lastEntry;
       setState({ storyHistory: updatedHistory });
@@ -1417,7 +1414,10 @@ export async function renderStoryTurn(state, container, onChoice, options = {}) 
       const deltaCards = historyContainer.querySelectorAll('.story-delta-card');
       const lastDeltaCard = deltaCards[deltaCards.length - 1];
       if (lastDeltaCard) lastDeltaCard.remove();
-      renderDeltaCard(historyContainer, deltaEffects || data.lastChoiceEffects, state, "本轮推演数值变动");
+      const latestState = getState();
+      if (!isQuarterSettlementMonth(latestState)) {
+        renderDeltaCard(historyContainer, mergedDisplayEffects, latestState, "本轮推演数值变动");
+      }
     }
   }
 
