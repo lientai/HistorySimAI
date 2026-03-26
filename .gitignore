@@ -12,6 +12,7 @@ build/
 
 # Sensitive config (contains API keys)
 ChongzhenSim/server/config.json
+config.json
 
 # IDE
 .vscode/
