@@ -73,6 +73,7 @@ export function buildStoryRequestBody(state, lastChoice) {
 
   if (rigidMode && state.rigid) {
     const memoryAnchors = Array.isArray(state.rigid.memoryAnchors) ? state.rigid.memoryAnchors : [];
+    const executionConstraints = Array.isArray(state.rigid.executionConstraints) ? state.rigid.executionConstraints : [];
     body.rigid = {
       calendar: state.rigid.calendar || null,
       finance: state.rigid.finance || null,
@@ -84,6 +85,7 @@ export function buildStoryRequestBody(state, lastChoice) {
       lastDecision: state.rigid.lastDecision || null,
       lastTriggerEvents: Array.isArray(state.rigid.lastTriggerEvents) ? state.rigid.lastTriggerEvents : [],
       latestMemoryAnchor: memoryAnchors.length ? memoryAnchors[memoryAnchors.length - 1] : null,
+      latestExecutionConstraint: executionConstraints.length ? executionConstraints[executionConstraints.length - 1] : null,
       lastOutputModules: Array.isArray(state.rigid.lastOutput?.modules)
         ? state.rigid.lastOutput.modules.map((module) => ({
           id: module.id,

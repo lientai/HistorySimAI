@@ -17,7 +17,12 @@ import {
   enforceRigidFloors,
   evaluateThresholdTriggers,
 } from "./mechanisms.js";
-import { appendMemoryAnchor, createMemoryAnchor } from "./memory.js";
+import {
+  appendMemoryAnchor,
+  createMemoryAnchor,
+  appendExecutionConstraint,
+  createExecutionConstraint,
+} from "./memory.js";
 import { composeRigidModules } from "./moduleComposer.js";
 import { applyHistoryImpact, consumeDueHistoryEvents } from "./history.js";
 
@@ -403,7 +408,14 @@ export function runRigidTurn(state, payload) {
     summary: `诏令“${decision.text}”已入档，阻力${Math.round(nextRigid.court.resistance)}，暗杀风险${Math.round(nextRigid.chongZhen.assassinateRisk)}%。`,
   });
   appendMemoryAnchor(nextRigid, anchor);
-
+  const executionConstraint = createExecutionConstraint(nextRigid, {
+    executionRates: execution.rates,
+    hadRefute,
+    reboundType: decision.reformLevel === "major" ? "major_reform" : "normal",
+    triggerEvents: thresholdEvents,
+    historyEvents,
+  });
+  appendExecutionConstraint(nextRigid, executionConstraint);
   const outputModules = composeRigidModules(nextRigid, {
     decisionText: isAssassinateOnlyTurn
       ? `${decision.text}（暗杀后续）`

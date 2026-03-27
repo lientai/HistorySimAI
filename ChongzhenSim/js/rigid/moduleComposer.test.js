@@ -24,11 +24,12 @@ describe("rigid module template", () => {
     ]);
   });
 
-  it("contains 8 narrative subitems in module 2", () => {
+  it("contains 3 narrative subitems in module 2 (opening, decision, closing)", () => {
     const modules = composeRigidModules(buildRigid(), {});
-    expect(modules[1].lines.length).toBe(8);
+    expect(modules[1].lines.length).toBe(3);
     expect(modules[1].lines[0]).toContain("其一");
-    expect(modules[1].lines[7]).toContain("其八");
+    expect(modules[1].lines[1]).toContain("其二");
+    expect(modules[1].lines[2]).toContain("其八");
   });
 
   it("contains six ministries + factory report + urgent military in module 3", () => {

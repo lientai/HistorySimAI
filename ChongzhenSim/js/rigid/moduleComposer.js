@@ -90,11 +90,6 @@ export function composeRigidModules(rigidState, context = {}) {
   const module2 = [
     `【其一·临朝】${tragicPulse.opening}`,
     `【其二·圣断】本回合所断：${context.decisionText || "未下新旨"}`,
-    `【其三·执行】折扣链路：${context.executionSummary || "尚未执行"}`,
-    `【其四·封驳】六科结果：${context.hadRefute ? "已触发封驳" : "暂未封驳"}`,
-    `【其五·反噬】制度反弹：${context.reboundSummary || "常态波动"}`,
-    `【其六·阈值】自动触发：${triggerEvents.length ? triggerEvents.map((e) => e.title).join("；") : "暂无"}`,
-    `【其七·史窗】节点推进：${historyEvents.length ? historyEvents.map((e) => e.name).join("；") : "暂无"}`,
     `【其八·自述】${tragicPulse.closing}`,
   ];
 
@@ -189,19 +184,12 @@ export function buildRigidStoryData(state, presets = []) {
   const risks = Array.isArray(module7?.lines) ? module7.lines.map(lineText) : [];
 
   const storyParagraphs = [];
-  if (narrative.length >= 8) {
+  if (narrative.length >= 3) {
     const opening = narrative[0] || "朕临朝听政，诸司奏报纷纭。";
     const decision = (narrative[1] || "本回合所断：未下新旨").replace(/^本回合所断：/, "");
-    const execution = (narrative[2] || "折扣链路：尚未执行").replace(/^折扣链路：/, "");
-    const refute = (narrative[3] || "六科结果：暂未封驳").replace(/^六科结果：/, "");
-    const rebound = (narrative[4] || "制度反弹：常规波动").replace(/^制度反弹：/, "");
-    const triggers = (narrative[5] || "自动触发：暂无").replace(/^自动触发：/, "");
-    const historyPush = (narrative[6] || "节点推进：暂无").replace(/^节点推进：/, "");
-    const closing = narrative[7] || "今日得失尚可记，然积弊未解。";
+    const closing = narrative[2] || "今日得失尚可记，然积弊未解。";
 
-    storyParagraphs.push(`${opening}本回合你拍板的核心决断是“${decision}”。`);
-    storyParagraphs.push(`政令落地环节显示，执行链路为：${execution}；六科审议结论为：${refute}。`);
-    storyParagraphs.push(`制度层面的回响是“${rebound}”。当前自动阈值触发为“${triggers}”，历史节点推进为“${historyPush}”。`);
+    storyParagraphs.push(`${opening}本回合你拍板的核心决断是"${decision}"。`);
     storyParagraphs.push(`朕心独白：${closing}`);
   }
 

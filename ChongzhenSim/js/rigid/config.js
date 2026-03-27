@@ -88,6 +88,7 @@ export function createDefaultRigidState(initial = DEFAULT_RIGID_INITIAL) {
     ...JSON.parse(JSON.stringify(initial)),
     calendar: { year: 1627, month: 8, turn: 1, season: "秋" },
     memoryAnchors: [],
+    executionConstraints: [],
     pendingEvents: [],
     eventHistory: [],
     noRefuteTurns: 0,
