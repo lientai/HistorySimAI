@@ -199,6 +199,27 @@ body {
   box-shadow: 0 1px 3px rgba(80, 40, 20, 0.2);
 }
 
+@media (max-width: 600px) {
+  .edict-block {
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 10px 10px;
+  }
+
+  .story-actions {
+    gap: 6px;
+  }
+
+  .story-action-btn {
+    font-size: 12px;
+    padding: 9px 10px;
+  }
+
+  .story-action-btn > span {
+    font-size: 10px;
+  }
+}
+
 .topbar-goal-bar {
   display: flex;
   align-items: center;

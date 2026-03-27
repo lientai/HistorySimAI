@@ -1,5 +1,6 @@
 import { getPolicyCatalog } from "../systems/coreGameplaySystem.js";
 import { buildStoryFactsFromState } from "../utils/storyFacts.js";
+import { isRigidMode } from "../rigid/config.js";
 
 const POLICY_TITLE_BY_ID = new Map(
   getPolicyCatalog().map((item) => [String(item.id || ""), String(item.title || item.id || "")])
@@ -54,6 +55,7 @@ export function buildSharedContextFromState(state, { compact = false } = {}) {
 }
 
 export function buildStoryRequestBody(state, lastChoice) {
+  const rigidMode = isRigidMode(state);
   const body = {
     state: {
       currentDay: state.currentDay,
@@ -68,6 +70,29 @@ export function buildStoryRequestBody(state, lastChoice) {
     },
     ...buildSharedContextFromState(state, { compact: true }),
   };
+
+  if (rigidMode && state.rigid) {
+    const memoryAnchors = Array.isArray(state.rigid.memoryAnchors) ? state.rigid.memoryAnchors : [];
+    body.rigid = {
+      calendar: state.rigid.calendar || null,
+      finance: state.rigid.finance || null,
+      military: state.rigid.military || null,
+      court: state.rigid.court || null,
+      chongZhen: state.rigid.chongZhen || null,
+      pendingAssassinate: !!state.rigid.pendingAssassinate,
+      pendingBranchEvent: state.rigid.pendingBranchEvent || null,
+      lastDecision: state.rigid.lastDecision || null,
+      lastTriggerEvents: Array.isArray(state.rigid.lastTriggerEvents) ? state.rigid.lastTriggerEvents : [],
+      latestMemoryAnchor: memoryAnchors.length ? memoryAnchors[memoryAnchors.length - 1] : null,
+      lastOutputModules: Array.isArray(state.rigid.lastOutput?.modules)
+        ? state.rigid.lastOutput.modules.map((module) => ({
+          id: module.id,
+          title: module.title,
+          lines: Array.isArray(module.lines) ? module.lines : [],
+        }))
+        : [],
+    };
+  }
 
   if (lastChoice) {
     body.lastChoiceId = lastChoice.id;

@@ -1,0 +1,8 @@
+﻿{
+  "finance": {"treasury": 30, "innerFund": 200, "militaryArrears": 3, "officialArrears": 0},
+  "military": {"liaoDongTroops": 8, "liaoDongMorale": 60, "rebelScale": 5, "qingTrend": "蛰伏"},
+  "court": {"authority": 50, "factionFight": 80, "resistance": 50, "refuteTimes": 8, "strikeState": false},
+  "chongZhen": {"anxiety": 40, "insomnia": 60, "exposureRisk": 5, "assassinateRisk": 0, "distrust": 0},
+  "other": {"offendGroups": [], "plague": 0, "foodCrisis": 0}
+}
+

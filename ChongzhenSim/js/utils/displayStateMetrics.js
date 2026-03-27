@@ -1,4 +1,4 @@
-import { formatTreasury, formatGrain } from "../systems/nationSystem.js";
+﻿import { formatTreasury, formatGrain } from "../systems/nationSystem.js";
 import { buildNameById } from "./sharedConstants.js";
 
 export const DISPLAY_STATE_METRICS = [
@@ -6,14 +6,32 @@ export const DISPLAY_STATE_METRICS = [
   { key: "grain", label: "粮储", icon: "🌾", section: "nation", source: "nation", defaultValue: 0, invert: false, format: "grain", bar: "grain" },
   { key: "militaryStrength", label: "军力", icon: "⚔️", section: "nation", source: "nation", defaultValue: 50, invert: false, format: "score", bar: "direct" },
   { key: "civilMorale", label: "民心", icon: "👥", section: "nation", source: "nation", defaultValue: 50, invert: false, format: "score", bar: "direct" },
-  { key: "borderThreat", label: "边患", icon: "🏴", section: "nation", source: "nation", defaultValue: 50, invert: true, format: "score", bar: "direct" },
+  { key: "borderThreat", label: "边患", icon: "🛡️", section: "nation", source: "nation", defaultValue: 50, invert: true, format: "score", bar: "direct" },
   { key: "disasterLevel", label: "天灾", icon: "🌪️", section: "nation", source: "nation", defaultValue: 50, invert: true, format: "score", bar: "direct" },
-  { key: "corruptionLevel", label: "贪腐", icon: "🔗", section: "nation", source: "nation", defaultValue: 50, invert: true, format: "score", bar: "direct" },
+  { key: "corruptionLevel", label: "贪腐", icon: "🧾", section: "nation", source: "nation", defaultValue: 50, invert: true, format: "score", bar: "direct" },
   { key: "prestige", label: "威望", icon: "👑", section: "governance", source: "root", defaultValue: 0, invert: false, format: "score", bar: "direct" },
-  { key: "executionRate", label: "执行率", icon: "📘", section: "governance", source: "root", defaultValue: 0, invert: false, format: "percent", bar: "direct" },
+  { key: "executionRate", label: "执行率", icon: "📌", section: "governance", source: "root", defaultValue: 0, invert: false, format: "percent", bar: "direct" },
   { key: "partyStrife", label: "党争", icon: "⚖️", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "unrest", label: "动乱", icon: "🔥", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "taxPressure", label: "税压", icon: "🧾", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "unrest", label: "动乱", icon: "🚨", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "taxPressure", label: "税压", icon: "🧮", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+
+  // Rigid mode metrics (shared settlement card still reuses the same renderer).
+  { key: "rigidTreasury", label: "国库", icon: "💰", section: "rigid", source: "rigid", rigidPath: "finance.treasury", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidInnerFund", label: "内帑", icon: "🪙", section: "rigid", source: "rigid", rigidPath: "finance.innerFund", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidMilitaryArrears", label: "军饷拖欠", icon: "📉", section: "rigid", source: "rigid", rigidPath: "finance.militaryArrears", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidOfficialArrears", label: "官俸拖欠", icon: "📜", section: "rigid", source: "rigid", rigidPath: "finance.officialArrears", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidLiaoDongTroops", label: "辽东兵力", icon: "⚔️", section: "rigid", source: "rigid", rigidPath: "military.liaoDongTroops", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidLiaoDongMorale", label: "辽东军心", icon: "🪖", section: "rigid", source: "rigid", rigidPath: "military.liaoDongMorale", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidRebelScale", label: "流寇规模", icon: "🚨", section: "rigid", source: "rigid", rigidPath: "military.rebelScale", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidAuthority", label: "权威", icon: "👑", section: "rigid", source: "rigid", rigidPath: "court.authority", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidFactionFight", label: "党争", icon: "⚖️", section: "rigid", source: "rigid", rigidPath: "court.factionFight", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidResistance", label: "阻力", icon: "🧱", section: "rigid", source: "rigid", rigidPath: "court.resistance", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidRefuteTimes", label: "封驳次数", icon: "📌", section: "rigid", source: "rigid", rigidPath: "court.refuteTimes", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidAnxiety", label: "焦虑", icon: "😰", section: "rigid", source: "rigid", rigidPath: "chongZhen.anxiety", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidInsomnia", label: "失眠", icon: "🌙", section: "rigid", source: "rigid", rigidPath: "chongZhen.insomnia", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidExposureRisk", label: "暴露风险", icon: "🕵️", section: "rigid", source: "rigid", rigidPath: "chongZhen.exposureRisk", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidAssassinateRisk", label: "暗杀风险", icon: "🗡️", section: "rigid", source: "rigid", rigidPath: "chongZhen.assassinateRisk", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidDistrust", label: "疑心", icon: "🫥", section: "rigid", source: "rigid", rigidPath: "chongZhen.distrust", defaultValue: 0, invert: true, format: "score", bar: "direct" },
 ];
 
 export const DISPLAY_STATE_LABELS = Object.fromEntries(
@@ -26,6 +44,11 @@ export const DISPLAY_STATE_INVERT_KEYS = DISPLAY_STATE_METRICS
 
 function getMetricDefinition(key) {
   return DISPLAY_STATE_METRICS.find((metric) => metric.key === key) || null;
+}
+
+function getByPath(target, path) {
+  if (!target || typeof target !== "object" || typeof path !== "string") return undefined;
+  return path.split(".").reduce((acc, part) => (acc == null ? acc : acc[part]), target);
 }
 
 function getRosterCharacters(state) {
@@ -43,6 +66,10 @@ export function getDisplayMetricValue(state, key) {
   if (!metric) return 0;
   if (metric.source === "nation") {
     const value = state?.nation?.[key];
+    return typeof value === "number" ? value : metric.defaultValue;
+  }
+  if (metric.source === "rigid") {
+    const value = getByPath(state?.rigid, metric.rigidPath);
     return typeof value === "number" ? value : metric.defaultValue;
   }
   const value = state?.[key];
@@ -76,6 +103,14 @@ export function captureDisplayStateSnapshot(state) {
     loyalty: { ...(state?.loyalty || {}) },
     appointments: { ...(state?.appointments || {}) },
     characterStatus: { ...(state?.characterStatus || {}) },
+    rigid: state?.rigid
+      ? {
+          finance: { ...(state.rigid.finance || {}) },
+          military: { ...(state.rigid.military || {}) },
+          court: { ...(state.rigid.court || {}) },
+          chongZhen: { ...(state.rigid.chongZhen || {}) },
+        }
+      : null,
   };
 
   getDisplayMetricsBySection("governance").forEach((metric) => {
@@ -255,7 +290,7 @@ export function buildOutcomeDisplayEntries(effects, state) {
       const positionLabel = positionNameById[positionId] || positionId;
       entries.push({
         type: "text",
-        label: `任命 ${nameById[characterId] || characterId} → ${positionLabel}`,
+        label: `任命 ${nameById[characterId] || characterId} -> ${positionLabel}`,
         value: "已生效",
       });
     });

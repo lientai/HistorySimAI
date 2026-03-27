@@ -9,11 +9,15 @@ import { AVAILABLE_AVATAR_NAMES, buildNameById } from "../utils/sharedConstants.
 import { applyEffects as applyEffectsModule } from "../utils/effectsProcessor.js";
 import { DISPLAY_STATE_METRICS, buildOutcomeDisplayDelta, captureDisplayStateSnapshot, hasOutcomeDisplayDelta, mergeOutcomeDisplayDelta, renderOutcomeDisplayCard } from "../utils/displayStateMetrics.js";
 import { normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
+import { buildRigidStoryData } from "../rigid/moduleComposer.js";
+import { ensureRigidState, getRigidPresets } from "../rigid/engine.js";
+import { isRigidMode } from "../rigid/config.js";
 
 let storyCache = { key: null, data: null };
 let lastAppliedKey = null;
 let storyHighlightPanelExpanded = false;
 let cachedStoryHighlightRange = null;
+let storyChoiceSubmitting = false;
 
 const MINISTER_NAME_COLORS = [
   "#8B0000", "#2e7d32", "#1565c0", "#e65100", "#6a1b9a",
@@ -1071,15 +1075,50 @@ function renderStoryError(container, errorMessage, retryCallback) {
   container.appendChild(block);
 }
 
+function mergeRigidAndLLMStoryParagraphs(rigidParagraphs, llmParagraphs) {
+  const rigid = Array.isArray(rigidParagraphs) ? rigidParagraphs.filter(Boolean) : [];
+  const llm = Array.isArray(llmParagraphs) ? llmParagraphs.filter(Boolean) : [];
+  if (!llm.length) return rigid;
+
+  const normalized = new Set();
+  const out = [];
+  const pushUnique = (text) => {
+    const key = String(text).replace(/\s+/g, "").slice(0, 80);
+    if (!key || normalized.has(key)) return;
+    normalized.add(key);
+    out.push(text);
+  };
+
+  llm.forEach(pushUnique);
+  rigid.slice(0, 3).forEach(pushUnique);
+  return out;
+}
+
+function buildRigidStoryFallback(state) {
+  const ensured = ensureRigidState(state);
+  return buildRigidStoryData(
+    {
+      ...state,
+      rigid: ensured.rigid,
+    },
+    getRigidPresets(state)
+  );
+}
+
 async function loadStoryData(state, container, renderId, onChoice, options) {
   const year = state.currentYear || 1;
   const month = state.currentMonth || 1;
   const phaseKey = state.currentPhase || "morning";
   const path = `data/story/year${year}_month${month}_${phaseKey}.json`;
-  const templateFallbackPath = `data/story/day1_${phaseKey}.json`;
   const cacheKey = `${year}_${month}_${phaseKey}`;
   const config = state.config || {};
+  const rigidMode = isRigidMode(state);
   const isFirstTurn = (state.lastChoiceId == null) && (!Array.isArray(state.storyHistory) || state.storyHistory.length === 0);
+
+  // For hard mode first turn, use dedicated hard_mode_day1_morning.json instead of generic day1_morning.json
+  const templateFallbackPath = (rigidMode && isFirstTurn) 
+    ? `data/story/hard_mode_day1_${phaseKey}.json`
+    : `data/story/day1_${phaseKey}.json`;
 
   if (state.currentStoryTurn && state.currentStoryTurn.key === cacheKey && state.currentStoryTurn.data) {
     storyCache = { key: cacheKey, data: state.currentStoryTurn.data };
@@ -1098,21 +1137,16 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     const lastChoice = state.lastChoiceId != null
       ? { id: state.lastChoiceId, text: state.lastChoiceText || "", hint: state.lastChoiceHint }
       : null;
-    
-    data = await requestStoryTurn(state, lastChoice);
-    loadingBlock.remove();
-    
-    if (renderId != null && container._storyRenderId !== renderId) return null;
-  }
 
-  if (useLLM && data == null) {
+    try {
+      data = await requestStoryTurn(state, lastChoice);
+    } catch (_error) {
+      data = null;
+    } finally {
+      loadingBlock.remove();
+    }
+
     if (renderId != null && container._storyRenderId !== renderId) return null;
-    renderStoryError(container, "剧情返回格式异常（JSON 解析失败）。请点击重新生成，或检查后端模型配置。", () => {
-      storyCache = { key: null, data: null };
-      container.innerHTML = "";
-      renderStoryTurn(getState(), container, onChoice, options);
-    });
-    return null;
   }
 
   if (data == null) {
@@ -1120,13 +1154,13 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
       // Template mode uses a curated baseline script by phase to avoid missing-file noise.
       const templatePath = (config.storyMode === "llm" && !isFirstTurn) ? path : templateFallbackPath;
       data = await loadJSON(templatePath);
-    } catch (e) {
+    } catch (_error) {
       if (renderId != null && container._storyRenderId !== renderId) return null;
-      
-      const errorMessage = useLLM 
+
+      const errorMessage = useLLM
         ? "本回合剧情生成失败，请检查网络或后端配置。"
         : "本回合剧情尚未准备好，请稍后再试。";
-      
+
       renderStoryError(container, errorMessage, () => {
         storyCache = { key: null, data: null };
         container.innerHTML = "";
@@ -1136,9 +1170,33 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     }
   }
 
-  storyCache = { key: cacheKey, data };
-  setState({ currentStoryTurn: { key: cacheKey, data } });
-  return data;
+  if (rigidMode) {
+    const rigidFallback = buildRigidStoryFallback(state);
+    const rigidGateActive = !!(state?.rigid?.pendingAssassinate || state?.rigid?.pendingBranchEvent || state?.rigid?.court?.strikeState);
+    const incomingChoices = Array.isArray(data?.choices) ? data.choices : [];
+    const mergedChoices = (!rigidGateActive && incomingChoices.length >= 3)
+      ? incomingChoices
+      : rigidFallback.choices;
+    data = {
+      ...rigidFallback,
+      ...(data || {}),
+      header: {
+        ...(rigidFallback.header || {}),
+        ...((data && data.header) || {}),
+      },
+      storyParagraphs: mergeRigidAndLLMStoryParagraphs(rigidFallback.storyParagraphs, data?.storyParagraphs),
+      choices: mergedChoices,
+      rigidMeta: {
+        ...(rigidFallback.rigidMeta || {}),
+        ...((data && data.rigidMeta) || {}),
+      },
+    };
+  }
+
+  const normalizedData = data && typeof data === "object" ? data : {};
+  storyCache = { key: cacheKey, data: normalizedData };
+  setState({ currentStoryTurn: { key: cacheKey, data: normalizedData } });
+  return normalizedData;
 }
 
 function updateStoryState(data) {
@@ -1160,12 +1218,25 @@ function createChoiceButton(choice, onChoice, disabled = false) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "story-action-btn";
-  if (disabled) btn.classList.add("story-action-btn--disabled");
-  btn.disabled = disabled;
+  const localDisabled = disabled || storyChoiceSubmitting;
+  if (localDisabled) btn.classList.add("story-action-btn--disabled");
+  btn.disabled = localDisabled;
   btn.innerHTML = `<div>${choice.text}</div>${choice.hint ? `<span>${choice.hint}</span>` : ""}`;
-  btn.addEventListener("click", () => {
-    if (disabled) return;
-    onChoice(choice.id, choice.text, choice.hint, choice.effects);
+  btn.addEventListener("click", async () => {
+    if (disabled || storyChoiceSubmitting) return;
+    storyChoiceSubmitting = true;
+    const actionsWrap = btn.closest(".story-actions");
+    if (actionsWrap) {
+      actionsWrap.querySelectorAll("button").forEach((node) => {
+        node.disabled = true;
+        node.classList.add("story-action-btn--disabled");
+      });
+    }
+    try {
+      await onChoice(choice.id, choice.text, choice.hint, choice.effects);
+    } finally {
+      storyChoiceSubmitting = false;
+    }
   });
   return btn;
 }
@@ -1319,6 +1390,13 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
 
   const quarterPanel = renderQuarterAgendaPanel(container, state, onChoice, options);
 
+  if (isRigidMode(state)) {
+    const rigidDelta = state?.rigid?.lastSettlementDelta;
+    if (hasOutcomeDisplayDelta(rigidDelta)) {
+      renderDeltaCard(currentWrap, rigidDelta, state, "本轮数值变化");
+    }
+  }
+
   const textBlock = document.createElement("div");
   textBlock.className = "edict-block";
   const fullText = buildBlockText(data);
@@ -1360,7 +1438,21 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   actionsWrap.className = "story-actions";
   const requiresQuarterFocus = Array.isArray(state.currentQuarterAgenda) && state.currentQuarterAgenda.length > 0;
   const quarterReady = !!(state.currentQuarterFocus && state.currentQuarterFocus.agendaId && state.currentQuarterFocus.stance && state.currentQuarterFocus.factionId);
-  const disableActions = requiresQuarterFocus && !quarterReady;
+  
+  // Check if we are in the first turn (opening scenario) - if so, don't apply strike block
+  const isFirstTurn = (state.lastChoiceId == null) && (!Array.isArray(state.storyHistory) || state.storyHistory.length === 0);
+  
+  const rigidStrikeBlocked = !isFirstTurn && isRigidMode(state) && !!state?.rigid?.court?.strikeState;
+  const hasStrikeRecoveryChoice = isRigidMode(state)
+    && Array.isArray(data.choices)
+    && data.choices.some((choice) => String(choice?.id || "").startsWith("rigid_strike_"));
+  const disableActions = (requiresQuarterFocus && !quarterReady) || (rigidStrikeBlocked && !hasStrikeRecoveryChoice);
+  if (rigidStrikeBlocked) {
+    const strikeTip = document.createElement("div");
+    strikeTip.className = "story-history-label";
+    strikeTip.textContent = "朝政停摆，无法施政。";
+    currentWrap.appendChild(strikeTip);
+  }
   
   (data.choices || []).forEach((choice) => {
     const btn = createChoiceButton(choice, onChoice, disableActions);
@@ -1370,13 +1462,14 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   const customBtn = document.createElement("button");
   customBtn.type = "button";
   customBtn.className = "story-action-btn story-action-btn--custom";
-  if (disableActions) {
+  if (disableActions || storyChoiceSubmitting) {
     customBtn.disabled = true;
     customBtn.classList.add("story-action-btn--disabled");
   }
   customBtn.innerHTML = `<div>自拟诏书</div><span>亲笔拟定旨意，由朝臣代为施行</span>`;
   customBtn.addEventListener("click", () => {
-    if (disableActions) return;
+    if (disableActions || storyChoiceSubmitting) return;
+    storyChoiceSubmitting = true;
     showCustomEdictPanel(onChoice, state);
   });
   actionsWrap.appendChild(customBtn);
@@ -1388,6 +1481,7 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
 }
 
 export async function renderStoryTurn(state, container, onChoice, options = {}) {
+  storyChoiceSubmitting = false;
   const renderId = options && options.renderId;
   if (renderId != null && container._storyRenderId !== renderId) return;
 
@@ -1468,7 +1562,10 @@ function showCustomEdictPanel(onChoice, state) {
   closeBtn.type = "button";
   closeBtn.className = "custom-edict-panel__close";
   closeBtn.textContent = "\u2715";
-  closeBtn.addEventListener("click", () => overlay.remove());
+  closeBtn.addEventListener("click", () => {
+    storyChoiceSubmitting = false;
+    overlay.remove();
+  });
   header.appendChild(title);
   header.appendChild(closeBtn);
   panel.appendChild(header);
@@ -1541,7 +1638,10 @@ function showCustomEdictPanel(onChoice, state) {
   overlay.appendChild(panel);
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) {
+      storyChoiceSubmitting = false;
+      overlay.remove();
+    }
   });
 
   const app = document.getElementById("app");

@@ -9,6 +9,9 @@ import { buildOutcomeDisplayDelta, captureDisplayStateSnapshot } from "../utils/
 import { deriveAppointmentEffectsFromText, normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
 import { advanceKejuSession, advanceWujuSession, getKejuStateSnapshot, getWujuStateSnapshot, resetKejuForNextCycle, resetWujuForNextCycle } from "./kejuSystem.js";
 import { buildStoryFactsFromState } from "../utils/storyFacts.js";
+import { isRigidMode } from "../rigid/config.js";
+import { ensureRigidState, runRigidTurn } from "../rigid/engine.js";
+import { computeRigidSettlementDelta } from "../rigid/settlement.js";
 
 let positionsMetaCache = null;
 const CHONGZHEN_BASE_YEAR = 1627;
@@ -186,10 +189,87 @@ async function progressWujuByMonth(nextYear, nextMonth) {
 
 export function runCurrentTurn(container, options = {}) {
   const state = getState();
+  if (isRigidMode(state)) {
+    const ensured = ensureRigidState(state);
+    const syncPatch = {
+      rigid: ensured.rigid,
+      currentYear: Math.max(1, (ensured.rigid?.calendar?.year || 1627) - 1626),
+      currentMonth: ensured.rigid?.calendar?.month || 8,
+      currentPhase: "morning",
+    };
+    if (
+      !state.rigid ||
+      state.rigid !== ensured.rigid ||
+      state.currentYear !== syncPatch.currentYear ||
+      state.currentMonth !== syncPatch.currentMonth
+    ) {
+      setState(syncPatch);
+    }
+    return renderStoryTurn(getState(), container, handleChoice, options);
+  }
   return renderStoryTurn(state, container, handleChoice, options);
 }
 
 async function handleChoice(choiceId, choiceText, choiceHint, effects) {
+  if (isRigidMode(getState())) {
+    const beforeRigidState = getState();
+    const historyKey = `${beforeRigidState.currentYear || 1}_${beforeRigidState.currentMonth || 1}_${beforeRigidState.currentPhase || "morning"}`;
+    const rigidResult = runRigidTurn(getState(), { choiceId, choiceText, choiceHint, effects });
+    setState({
+      ...rigidResult.statePatch,
+      lastChoiceId: choiceId,
+      lastChoiceText: choiceText || "",
+      lastChoiceHint: choiceHint || null,
+      currentStoryTurn: null,
+      systemNewsToday: [
+        ...(getState().systemNewsToday || []),
+        {
+          title: rigidResult.rejected ? "刚性规则拦截" : "刚性推演完成",
+          summary: rigidResult.message,
+          tag: rigidResult.rejected ? "警告" : "重要",
+          icon: rigidResult.rejected ? "⚠" : "📜",
+        },
+      ],
+    });
+
+    const afterRigidState = getState();
+    const rigidDisplayDelta = computeRigidSettlementDelta(beforeRigidState, afterRigidState);
+
+    pushCurrentTurnToHistory(beforeRigidState, { text: choiceText || "", hint: choiceHint ?? undefined }, rigidDisplayDelta);
+
+    const historyAfterTurn = Array.isArray(getState().storyHistory) ? [...getState().storyHistory] : [];
+    const targetIndex = historyAfterTurn.findIndex((entry) => entry?.key === historyKey);
+    if (targetIndex >= 0) {
+      historyAfterTurn[targetIndex] = {
+        ...historyAfterTurn[targetIndex],
+        displayEffects: rigidDisplayDelta,
+      };
+    }
+
+    setState({
+      storyHistory: historyAfterTurn,
+      rigid: {
+        ...(getState().rigid || {}),
+        lastSettlementDelta: rigidDisplayDelta,
+      },
+    });
+
+    setState({ storyFacts: buildStoryFactsFromState(getState()) });
+    autoSaveIfEnabled();
+    updateTopbarByState(getState());
+    if (typeof window !== "undefined") {
+      const main = document.getElementById("main-view");
+      if (main) {
+        main.innerHTML = "";
+        await runCurrentTurn(main);
+        requestAnimationFrame(() => {
+          main.scrollTop = main.scrollHeight;
+        });
+      }
+    }
+    return;
+  }
+
   const state = getState();
   const beforeTurnSnapshot = captureDisplayStateSnapshot(state);
   const positionsMeta = await getPositionsMeta();
