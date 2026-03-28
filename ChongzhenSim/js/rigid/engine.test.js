@@ -222,5 +222,16 @@ describe("rigid mechanisms", () => {
     });
     expect(result.rejected).toBe(false);
   });
+
+  it("accepts unknown dynamic story choice instead of hard-blocking", () => {
+    const state = buildState();
+    const result = runRigidTurn(state, {
+      choiceId: "story_choice_dynamic_a",
+      choiceText: "先稳住局势，再择机整饬吏治",
+    });
+    expect(result.rejected).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(result.message).not.toContain("未知决策");
+  });
 });
 

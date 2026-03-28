@@ -4,6 +4,7 @@ import { loadJSON } from "../dataLoader.js";
 import { getStatBarClass } from "../systems/nationSystem.js";
 import { PLAYER_ABILITY_KEYS, getPolicyCatalog, spendAbilityPoint, unlockPolicy } from "../systems/coreGameplaySystem.js";
 import { formatDisplayMetricValue, getDisplayMetricBarValue, getDisplayMetricsBySection } from "../utils/displayStateMetrics.js";
+import { isRigidMode } from "../rigid/config.js";
 
 let nationInitCache = null;
 let provinceRulesCache = null;
@@ -208,98 +209,198 @@ function deriveProvinceRuntimeState(province, state) {
 
 function renderNationView(container) {
   const state = getState();
+  const rigidMode = isRigidMode(state);
   const factionSupport = state.factionSupport || {};
   const quarterAgenda = state.currentQuarterAgenda || [];
   const provinceStats = state.provinceStats || {};
 
+  // Helper function to get metric definition from all sections
+  function getMetricDefinition(key) {
+    return getDisplayMetricsBySection("rigid").find(m => m.key === key) ||
+           getDisplayMetricsBySection("nation").find(m => m.key === key) ||
+           getDisplayMetricsBySection("governance").find(m => m.key === key);
+  }
+
   const root = document.createElement("div");
   root.className = "nation-root";
 
-  // ── 国家概况 ──
-  const overview = document.createElement("div");
-  overview.className = "nation-overview";
+  // ── 国家概况 / 崇祯·大明国势 ──
+  if (!rigidMode) {
+    // Classic mode: show nation overview + governance overview separately
+    const overview = document.createElement("div");
+    overview.className = "nation-overview";
 
-  const overviewTitle = document.createElement("div");
-  overviewTitle.className = "nation-overview-title";
-  overviewTitle.textContent = "大明国势";
-  overview.appendChild(overviewTitle);
+    const overviewTitle = document.createElement("div");
+    overviewTitle.className = "nation-overview-title";
+    overviewTitle.textContent = "大明国势";
+    overview.appendChild(overviewTitle);
 
-  const statsGrid = document.createElement("div");
-  statsGrid.className = "nation-stats-grid";
+    const statsGrid = document.createElement("div");
+    statsGrid.className = "nation-stats-grid";
 
-  const stats = getDisplayMetricsBySection("nation").map((metric) => ({
-    label: metric.label,
-    icon: metric.icon,
-    value: formatDisplayMetricValue(state, metric.key),
-    barValue: getDisplayMetricBarValue(state, metric.key),
-    invert: metric.invert,
-  }));
+    const stats = getDisplayMetricsBySection("nation").map((metric) => ({
+      label: metric.label,
+      icon: metric.icon,
+      value: formatDisplayMetricValue(state, metric.key),
+      barValue: getDisplayMetricBarValue(state, metric.key),
+      invert: metric.invert,
+    }));
 
-  stats.forEach((s) => {
-    const item = document.createElement("div");
-    item.className = "nation-stat-item";
+    stats.forEach((s) => {
+      const item = document.createElement("div");
+      item.className = "nation-stat-item";
 
-    const label = document.createElement("div");
-    label.className = "nation-stat-label";
-    label.textContent = `${s.icon} ${s.label}`;
+      const label = document.createElement("div");
+      label.className = "nation-stat-label";
+      label.textContent = `${s.icon} ${s.label}`;
 
-    const value = document.createElement("div");
-    value.className = "nation-stat-value";
-    value.textContent = s.value;
+      const value = document.createElement("div");
+      value.className = "nation-stat-value";
+      value.textContent = s.value;
 
-    const bar = document.createElement("div");
-    bar.className = "nation-stat-bar";
-    const barInner = document.createElement("div");
-    barInner.className = "nation-stat-bar-inner " + getStatBarClass(s.barValue, s.invert);
-    barInner.style.width = Math.min(100, s.barValue) + "%";
-    bar.appendChild(barInner);
+      const bar = document.createElement("div");
+      bar.className = "nation-stat-bar";
+      const barInner = document.createElement("div");
+      barInner.className = "nation-stat-bar-inner " + getStatBarClass(s.barValue, s.invert);
+      barInner.style.width = Math.min(100, s.barValue) + "%";
+      bar.appendChild(barInner);
 
-    item.appendChild(label);
-    item.appendChild(value);
-    item.appendChild(bar);
-    statsGrid.appendChild(item);
-  });
+      item.appendChild(label);
+      item.appendChild(value);
+      item.appendChild(bar);
+      statsGrid.appendChild(item);
+    });
 
-  overview.appendChild(statsGrid);
-  root.appendChild(overview);
+    overview.appendChild(statsGrid);
+    root.appendChild(overview);
 
-  const governance = document.createElement("div");
-  governance.className = "nation-overview";
-  const governanceTitle = document.createElement("div");
-  governanceTitle.className = "nation-overview-title";
-  governanceTitle.textContent = "朝局总览";
-  governance.appendChild(governanceTitle);
+    const governance = document.createElement("div");
+    governance.className = "nation-overview";
+    const governanceTitle = document.createElement("div");
+    governanceTitle.className = "nation-overview-title";
+    governanceTitle.textContent = "朝局总览";
+    governance.appendChild(governanceTitle);
 
-  const governanceGrid = document.createElement("div");
-  governanceGrid.className = "nation-stats-grid";
-  getDisplayMetricsBySection("governance").map((metric) => ({
-    label: metric.label,
-    icon: metric.icon,
-    value: formatDisplayMetricValue(state, metric.key),
-    barValue: getDisplayMetricBarValue(state, metric.key),
-    invert: metric.invert,
-  })).forEach((s) => {
-    const item = document.createElement("div");
-    item.className = "nation-stat-item";
-    const label = document.createElement("div");
-    label.className = "nation-stat-label";
-    label.textContent = `${s.icon} ${s.label}`;
-    const value = document.createElement("div");
-    value.className = "nation-stat-value";
-    value.textContent = s.value;
-    const bar = document.createElement("div");
-    bar.className = "nation-stat-bar";
-    const barInner = document.createElement("div");
-    barInner.className = "nation-stat-bar-inner " + getStatBarClass(s.barValue, s.invert);
-    barInner.style.width = Math.min(100, s.barValue) + "%";
-    bar.appendChild(barInner);
-    item.appendChild(label);
-    item.appendChild(value);
-    item.appendChild(bar);
-    governanceGrid.appendChild(item);
-  });
-  governance.appendChild(governanceGrid);
-  root.appendChild(governance);
+    const governanceGrid = document.createElement("div");
+    governanceGrid.className = "nation-stats-grid";
+    getDisplayMetricsBySection("governance").map((metric) => ({
+      label: metric.label,
+      icon: metric.icon,
+      value: formatDisplayMetricValue(state, metric.key),
+      barValue: getDisplayMetricBarValue(state, metric.key),
+      invert: metric.invert,
+    })).forEach((s) => {
+      const item = document.createElement("div");
+      item.className = "nation-stat-item";
+      const label = document.createElement("div");
+      label.className = "nation-stat-label";
+      label.textContent = `${s.icon} ${s.label}`;
+      const value = document.createElement("div");
+      value.className = "nation-stat-value";
+      value.textContent = s.value;
+      const bar = document.createElement("div");
+      bar.className = "nation-stat-bar";
+      const barInner = document.createElement("div");
+      barInner.className = "nation-stat-bar-inner " + getStatBarClass(s.barValue, s.invert);
+      barInner.style.width = Math.min(100, s.barValue) + "%";
+      bar.appendChild(barInner);
+      item.appendChild(label);
+      item.appendChild(value);
+      item.appendChild(bar);
+      governanceGrid.appendChild(item);
+    });
+    governance.appendChild(governanceGrid);
+    root.appendChild(governance);
+  } else {
+    // Rigid mode: show merged "崇祯·大明国势" panel combining nation + governance + rigid metrics
+    const chongzhenOverview = document.createElement("div");
+    chongzhenOverview.className = "nation-overview";
+    const chongzhenTitle = document.createElement("div");
+    chongzhenTitle.className = "nation-overview-title";
+    chongzhenTitle.textContent = "崇祯·大明国势";
+    chongzhenOverview.appendChild(chongzhenTitle);
+
+    const chongzhenGrid = document.createElement("div");
+    chongzhenGrid.className = "nation-stats-grid";
+
+    // Define merged metrics: rigid finance + nation metrics + rigid others
+    const mergedMetricKeys = [
+      // 财务状况 (from rigid)
+      { key: "rigidTreasury", group: "财务状况", icon: "💰" },
+      { key: "rigidInnerFund", group: "财务状况", icon: "🪙" },
+      { key: "rigidMilitaryArrears", group: "财务状况", icon: "📉" },
+      { key: "rigidOfficialArrears", group: "财务状况", icon: "📜" },
+      // 国家形势 (from nation + governance)
+      { key: "civilMorale", group: "国家形势", icon: "👥" },
+      { key: "borderThreat", group: "国家形势", icon: "🛡️" },
+      { key: "disasterLevel", group: "国家形势", icon: "🌪️" },
+      { key: "corruptionLevel", group: "国家形势", icon: "🧾" },
+      // 军事力量 (rigid specific + classic overall military)
+      { key: "militaryStrength", group: "军事力量", icon: "🗡️" },
+      { key: "rigidLiaoDongTroops", group: "军事力量", icon: "⚔️" },
+      { key: "rigidLiaoDongMorale", group: "军事力量", icon: "🪖" },
+      { key: "rigidRebelScale", group: "军事力量", icon: "🚨" },
+      // 朝廷局势 (from rigid)
+      { key: "rigidAuthority", group: "朝廷局势", icon: "👑" },
+      { key: "rigidFactionFight", group: "朝廷局势", icon: "⚖️" },
+      { key: "rigidResistance", group: "朝廷局势", icon: "🧱" },
+      { key: "rigidRefuteTimes", group: "朝廷局势", icon: "📌" },
+      // 皇帝状态 (from rigid)
+      { key: "rigidAnxiety", group: "皇帝状态", icon: "😰" },
+      { key: "rigidInsomnia", group: "皇帝状态", icon: "🌙" },
+      { key: "rigidExposureRisk", group: "皇帝状态", icon: "🕵️" },
+      { key: "rigidAssassinateRisk", group: "皇帝状态", icon: "🗡️" },
+      { key: "rigidDistrust", group: "皇帝状态", icon: "🫥" },
+    ];
+
+    // Group and render metrics
+    let lastGroup = null;
+    mergedMetricKeys.forEach((item) => {
+      if (item.group !== lastGroup) {
+        lastGroup = item.group;
+        const groupContainer = document.createElement("div");
+        groupContainer.style.gridColumn = "1 / -1";
+        const groupHeader = document.createElement("div");
+        groupHeader.style.fontSize = "12px";
+        groupHeader.style.fontWeight = "bold";
+        groupHeader.style.color = "#888";
+        groupHeader.style.marginBottom = "8px";
+        groupHeader.style.paddingLeft = "8px";
+        groupHeader.textContent = lastGroup;
+        groupContainer.appendChild(groupHeader);
+        chongzhenGrid.appendChild(groupContainer);
+      }
+
+      const metric = getMetricDefinition(item.key);
+      if (!metric) return;
+
+      const statItem = document.createElement("div");
+      statItem.className = "nation-stat-item";
+
+      const label = document.createElement("div");
+      label.className = "nation-stat-label";
+      label.textContent = `${item.icon} ${metric.label}`;
+
+      const value = document.createElement("div");
+      value.className = "nation-stat-value";
+      value.textContent = formatDisplayMetricValue(state, item.key);
+
+      const bar = document.createElement("div");
+      bar.className = "nation-stat-bar";
+      const barInner = document.createElement("div");
+      barInner.className = "nation-stat-bar-inner " + getStatBarClass(getDisplayMetricBarValue(state, item.key), metric.invert);
+      barInner.style.width = Math.min(100, getDisplayMetricBarValue(state, item.key)) + "%";
+      bar.appendChild(barInner);
+
+      statItem.appendChild(label);
+      statItem.appendChild(value);
+      statItem.appendChild(bar);
+      chongzhenGrid.appendChild(statItem);
+    });
+
+    chongzhenOverview.appendChild(chongzhenGrid);
+    root.appendChild(chongzhenOverview);
+  }
 
   const factionSection = createFoldSection("派系支持度", (body) => {
     (state.factions || []).forEach((faction) => {
@@ -325,6 +426,7 @@ function renderNationView(container) {
   });
   root.appendChild(factionSection);
 
+  if (!rigidMode) {
   const agendaSection = createFoldSection("季度奏折", (body) => {
     if (!quarterAgenda.length) {
       const empty = document.createElement("div");
@@ -355,8 +457,10 @@ function renderNationView(container) {
     });
   });
   root.appendChild(agendaSection);
+  }
 
-  const abilitySection = createFoldSection(`皇帝能力（可用点数 ${state.abilityPoints || 0}）`, (body) => {
+  if (!rigidMode) {
+    const abilitySection = createFoldSection(`皇帝能力（可用点数 ${state.abilityPoints || 0}）`, (body) => {
     const abilityMeta = {
       management: { label: "管理", desc: "提升季度财政与粮储效率。" },
       military: { label: "军事", desc: "强化军事类诏书收益。" },
@@ -393,50 +497,53 @@ function renderNationView(container) {
       }
       body.appendChild(card);
     });
-  });
-  root.appendChild(abilitySection);
-
-  const policies = getPolicyCatalog();
-  const policyTitleMap = Object.fromEntries(policies.map((item) => [item.id, item.title]));
-  const policySection = createFoldSection(`国策树（可用点数 ${state.policyPoints || 0}）`, (body) => {
-    policies.forEach((policy) => {
-      const unlocked = (state.unlockedPolicies || []).includes(policy.id);
-      const canUnlock = !unlocked && (state.policyPoints || 0) >= policy.cost && (policy.requires || []).every((id) => (state.unlockedPolicies || []).includes(id));
-      const card = document.createElement("div");
-      card.className = "nation-card";
-      const cardBody = document.createElement("div");
-      cardBody.className = "nation-card-body";
-      const titleEl = document.createElement("div");
-      titleEl.className = "nation-card-title";
-      titleEl.textContent = `${policy.branch} · ${policy.title}${unlocked ? "（已实施）" : ""}`;
-      const summaryEl = document.createElement("div");
-      summaryEl.className = "nation-card-summary";
-      const requiresText = (policy.requires || []).length
-        ? ` 前置：${(policy.requires || []).map((id) => policyTitleMap[id] || id).join("、")}`
-        : "";
-      summaryEl.textContent = `${policy.description} 消耗 ${policy.cost} 点。${requiresText}`;
-      cardBody.appendChild(titleEl);
-      cardBody.appendChild(summaryEl);
-      card.appendChild(cardBody);
-      if (!unlocked) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "nation-mini-btn" + (canUnlock ? "" : " nation-mini-btn--disabled");
-        btn.textContent = canUnlock ? "实施" : "未满足";
-        btn.disabled = !canUnlock;
-        btn.addEventListener("click", () => {
-          const patch = unlockPolicy(getState(), policy.id);
-          if (!patch) return;
-          setState(patch);
-          container.innerHTML = "";
-          renderNationView(container);
-        });
-        card.appendChild(btn);
-      }
-      body.appendChild(card);
     });
-  });
-  root.appendChild(policySection);
+    root.appendChild(abilitySection);
+  }
+
+  if (!rigidMode) {
+    const policies = getPolicyCatalog();
+    const policyTitleMap = Object.fromEntries(policies.map((item) => [item.id, item.title]));
+    const policySection = createFoldSection(`国策树（可用点数 ${state.policyPoints || 0}）`, (body) => {
+      policies.forEach((policy) => {
+        const unlocked = (state.unlockedPolicies || []).includes(policy.id);
+        const canUnlock = !unlocked && (state.policyPoints || 0) >= policy.cost && (policy.requires || []).every((id) => (state.unlockedPolicies || []).includes(id));
+        const card = document.createElement("div");
+        card.className = "nation-card";
+        const cardBody = document.createElement("div");
+        cardBody.className = "nation-card-body";
+        const titleEl = document.createElement("div");
+        titleEl.className = "nation-card-title";
+        titleEl.textContent = `${policy.branch} · ${policy.title}${unlocked ? "（已实施）" : ""}`;
+        const summaryEl = document.createElement("div");
+        summaryEl.className = "nation-card-summary";
+        const requiresText = (policy.requires || []).length
+          ? ` 前置：${(policy.requires || []).map((id) => policyTitleMap[id] || id).join("、")}`
+          : "";
+        summaryEl.textContent = `${policy.description} 消耗 ${policy.cost} 点。${requiresText}`;
+        cardBody.appendChild(titleEl);
+        cardBody.appendChild(summaryEl);
+        card.appendChild(cardBody);
+        if (!unlocked) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "nation-mini-btn" + (canUnlock ? "" : " nation-mini-btn--disabled");
+          btn.textContent = canUnlock ? "实施" : "未满足";
+          btn.disabled = !canUnlock;
+          btn.addEventListener("click", () => {
+            const patch = unlockPolicy(getState(), policy.id);
+            if (!patch) return;
+            setState(patch);
+            container.innerHTML = "";
+            renderNationView(container);
+          });
+          card.appendChild(btn);
+        }
+        body.appendChild(card);
+      });
+    });
+    root.appendChild(policySection);
+  }
 
   const customPolicySection = createFoldSection(`自定义国策（${Array.isArray(state.customPolicies) ? state.customPolicies.length : 0}）`, (body) => {
     const customPolicies = Array.isArray(state.customPolicies) ? state.customPolicies : [];

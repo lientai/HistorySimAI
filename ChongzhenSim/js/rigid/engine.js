@@ -133,7 +133,22 @@ function resolveDecision(choiceId, choiceText, presets) {
       intent: { court: { resistance: 5, factionFight: 4 }, chongZhen: { anxiety: 3, exposureRisk: 2 } },
     };
   }
-  return presets.find((item) => item.id === choiceId) || null;
+  const preset = presets.find((item) => item.id === choiceId);
+  if (preset) return preset;
+
+  const text = String(choiceText || "").trim();
+  if (!text) return null;
+
+  // Fallback for dynamic story choices: keep rigid pipeline running instead of hard-blocking.
+  return {
+    id: String(choiceId || `rigid_dynamic_${Date.now()}`),
+    text,
+    hint: "动态决策（按困难模式通用规则估算）",
+    type: "politics",
+    reformLevel: "normal",
+    offend: { scholar: 2, general: 1, eunuch: 1, royal: 1, people: 0 },
+    intent: {},
+  };
 }
 
 function summarizeExecution(executionResult) {

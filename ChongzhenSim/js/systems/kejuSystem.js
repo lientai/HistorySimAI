@@ -169,7 +169,7 @@ export function advanceKejuSession(kejuState, context, options = {}) {
   const snapshot = getKejuStateSnapshot({ keju: kejuState });
   const random = typeof options.random === "function" ? options.random : Math.random;
   const formatName = typeof options.formatName === "function" ? options.formatName : ((value) => value || "");
-  const enableGeneratedCandidates = options.enableGeneratedCandidates === true;
+  const enableGeneratedCandidates = options.enableGeneratedCandidates !== false;
   const isAliveCharacter = typeof options.isAliveCharacter === "function"
     ? options.isAliveCharacter
     : ((currentState, id) => currentState?.characterStatus?.[id]?.isAlive !== false);
@@ -398,6 +398,7 @@ export function advanceWujuSession(wujuState, context, options = {}) {
   const snapshot = getWujuStateSnapshot({ wuju: wujuState });
   const random = typeof options.random === "function" ? options.random : Math.random;
   const formatName = typeof options.formatName === "function" ? options.formatName : ((value) => value || "");
+  const enableGeneratedCandidates = options.enableGeneratedCandidates !== false;
   const isAliveCharacter = typeof options.isAliveCharacter === "function"
     ? options.isAliveCharacter
     : ((currentState, id) => currentState?.characterStatus?.[id]?.isAlive !== false);
@@ -405,9 +406,11 @@ export function advanceWujuSession(wujuState, context, options = {}) {
   const state = context?.state || {};
 
   if (snapshot.stage === "idle") {
-    const generatedCandidates = snapshot.generatedCandidates.length
+    const generatedCandidates = enableGeneratedCandidates
+      ? (snapshot.generatedCandidates.length
       ? snapshot.generatedCandidates
-      : generateRandomWujuCandidates(state, { random, count: 5 });
+      : generateRandomWujuCandidates(state, { random, count: 5 }))
+      : [];
     const candidatePool = buildWujuCandidatePool(
       characters,
       { ...state, wuju: { ...snapshot, generatedCandidates } },

@@ -16,19 +16,19 @@ export const DISPLAY_STATE_METRICS = [
   { key: "taxPressure", label: "税压", icon: "🧮", section: "governance", source: "root", defaultValue: 0, invert: true, format: "score", bar: "direct" },
 
   // Rigid mode metrics (shared settlement card still reuses the same renderer).
-  { key: "rigidTreasury", label: "国库", icon: "💰", section: "rigid", source: "rigid", rigidPath: "finance.treasury", defaultValue: 0, invert: false, format: "score", bar: "direct" },
-  { key: "rigidInnerFund", label: "内帑", icon: "🪙", section: "rigid", source: "rigid", rigidPath: "finance.innerFund", defaultValue: 0, invert: false, format: "score", bar: "direct" },
-  { key: "rigidMilitaryArrears", label: "军饷拖欠", icon: "📉", section: "rigid", source: "rigid", rigidPath: "finance.militaryArrears", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "rigidOfficialArrears", label: "官俸拖欠", icon: "📜", section: "rigid", source: "rigid", rigidPath: "finance.officialArrears", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "rigidLiaoDongTroops", label: "辽东兵力", icon: "⚔️", section: "rigid", source: "rigid", rigidPath: "military.liaoDongTroops", defaultValue: 0, invert: false, format: "score", bar: "direct" },
+  { key: "rigidTreasury", label: "国库", icon: "💰", section: "rigid", source: "rigid", rigidPath: "finance.treasury", defaultValue: 0, invert: false, format: "treasury", bar: "treasury" },
+  { key: "rigidInnerFund", label: "内帑", icon: "🪙", section: "rigid", source: "rigid", rigidPath: "finance.innerFund", defaultValue: 0, invert: false, format: "treasury", bar: "treasury" },
+  { key: "rigidMilitaryArrears", label: "军饷拖欠", icon: "📉", section: "rigid", source: "rigid", rigidPath: "finance.militaryArrears", defaultValue: 0, invert: true, format: "wanliang", bar: "wanliang" },
+  { key: "rigidOfficialArrears", label: "官俸拖欠", icon: "📜", section: "rigid", source: "rigid", rigidPath: "finance.officialArrears", defaultValue: 0, invert: true, format: "wanliang", bar: "wanliang" },
+  { key: "rigidLiaoDongTroops", label: "辽东兵力", icon: "⚔️", section: "rigid", source: "rigid", rigidPath: "military.liaoDongTroops", defaultValue: 0, invert: false, format: "wanren", bar: "wanren" },
   { key: "rigidLiaoDongMorale", label: "辽东军心", icon: "🪖", section: "rigid", source: "rigid", rigidPath: "military.liaoDongMorale", defaultValue: 0, invert: false, format: "score", bar: "direct" },
   { key: "rigidRebelScale", label: "流寇规模", icon: "🚨", section: "rigid", source: "rigid", rigidPath: "military.rebelScale", defaultValue: 0, invert: true, format: "score", bar: "direct" },
   { key: "rigidAuthority", label: "权威", icon: "👑", section: "rigid", source: "rigid", rigidPath: "court.authority", defaultValue: 0, invert: false, format: "score", bar: "direct" },
   { key: "rigidFactionFight", label: "党争", icon: "⚖️", section: "rigid", source: "rigid", rigidPath: "court.factionFight", defaultValue: 0, invert: true, format: "score", bar: "direct" },
   { key: "rigidResistance", label: "阻力", icon: "🧱", section: "rigid", source: "rigid", rigidPath: "court.resistance", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "rigidRefuteTimes", label: "封驳次数", icon: "📌", section: "rigid", source: "rigid", rigidPath: "court.refuteTimes", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "rigidAnxiety", label: "焦虑", icon: "😰", section: "rigid", source: "rigid", rigidPath: "chongZhen.anxiety", defaultValue: 0, invert: true, format: "score", bar: "direct" },
-  { key: "rigidInsomnia", label: "失眠", icon: "🌙", section: "rigid", source: "rigid", rigidPath: "chongZhen.insomnia", defaultValue: 0, invert: true, format: "score", bar: "direct" },
+  { key: "rigidRefuteTimes", label: "封驳次数", icon: "📌", section: "rigid", source: "rigid", rigidPath: "court.refuteTimes", defaultValue: 0, invert: true, format: "count", bar: "count" },
+  { key: "rigidAnxiety", label: "焦虑", icon: "😰", section: "rigid", source: "rigid", rigidPath: "chongZhen.anxiety", defaultValue: 0, invert: true, format: "points", bar: "points" },
+  { key: "rigidInsomnia", label: "失眠", icon: "🌙", section: "rigid", source: "rigid", rigidPath: "chongZhen.insomnia", defaultValue: 0, invert: true, format: "points", bar: "points" },
   { key: "rigidExposureRisk", label: "暴露风险", icon: "🕵️", section: "rigid", source: "rigid", rigidPath: "chongZhen.exposureRisk", defaultValue: 0, invert: true, format: "score", bar: "direct" },
   { key: "rigidAssassinateRisk", label: "暗杀风险", icon: "🗡️", section: "rigid", source: "rigid", rigidPath: "chongZhen.assassinateRisk", defaultValue: 0, invert: true, format: "score", bar: "direct" },
   { key: "rigidDistrust", label: "疑心", icon: "🫥", section: "rigid", source: "rigid", rigidPath: "chongZhen.distrust", defaultValue: 0, invert: true, format: "score", bar: "direct" },
@@ -70,7 +70,12 @@ export function getDisplayMetricValue(state, key) {
   }
   if (metric.source === "rigid") {
     const value = getByPath(state?.rigid, metric.rigidPath);
-    return typeof value === "number" ? value : metric.defaultValue;
+    if (typeof value !== "number") return metric.defaultValue;
+    // Convert rigid finance values (万两/万石) to 两/石 for unified display
+    if (key === "rigidTreasury" || key === "rigidInnerFund") {
+      return Math.round(value * 10000);
+    }
+    return value;
   }
   const value = state?.[key];
   return typeof value === "number" ? value : metric.defaultValue;
@@ -78,11 +83,16 @@ export function getDisplayMetricValue(state, key) {
 
 export function formatDisplayMetricValue(state, key) {
   const metric = getMetricDefinition(key);
-  const value = getDisplayMetricValue(state, key);
+  const rawValue = getDisplayMetricValue(state, key);
+  const value = Math.round(rawValue);
   if (!metric) return String(value);
   if (metric.format === "treasury") return formatTreasury(value);
   if (metric.format === "grain") return formatGrain(value);
   if (metric.format === "percent") return `${value}%`;
+  if (metric.format === "wanliang") return `${value}万两`;
+  if (metric.format === "wanren") return `${value}万人`;
+  if (metric.format === "count") return `${value}次`;
+  if (metric.format === "points") return `${value}点`;
   return `${value}/100`;
 }
 
@@ -92,6 +102,11 @@ export function getDisplayMetricBarValue(state, key) {
   if (!metric) return 0;
   if (metric.bar === "treasury") return Math.min(100, value / 10000);
   if (metric.bar === "grain") return Math.min(100, value / 500);
+  // Non-percentage rigid metrics: scale to a reasonable gameplay maximum
+  if (metric.bar === "wanliang") return Math.min(100, Math.max(0, value / 20 * 100)); // max ~20万两 arrears
+  if (metric.bar === "wanren") return Math.min(100, Math.max(0, value / 20 * 100));  // max ~20万人 troops
+  if (metric.bar === "count") return Math.min(100, Math.max(0, value / 30 * 100));   // max ~30次 refutes
+  if (metric.bar === "points") return Math.min(100, Math.max(0, value / 200 * 100)); // unbounded, visual max ~200点
   return Math.min(100, Math.max(0, value));
 }
 

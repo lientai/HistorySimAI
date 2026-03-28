@@ -840,6 +840,74 @@ function estimateEffectsFromEdict(edictText) {
 
   const matches = (patterns) => patterns.some((p) => text.includes(p));
 
+  const parseExplicitResourceDelta = (sourceText) => {
+    const parsed = {};
+    const addParsed = (key, value) => {
+      if (typeof value !== "number" || value === 0) return;
+      parsed[key] = (parsed[key] || 0) + value;
+    };
+
+    const incomeHints = ["抄", "抄没", "没收", "入库", "充入", "征收", "征缴", "增收", "加征", "追缴", "罚没", "获得", "获", "充盈", "补入"];
+    const expenseHints = ["拨", "拨付", "发放", "发给", "赈", "赈济", "开仓", "支出", "耗费", "减免", "免除", "补发", "军饷", "采买", "修缮", "施放", "急调", "调拨", "调运", "速运"];
+
+    const text = String(sourceText || "");
+
+    // Sentence-level fallback: if the whole sentence clearly expresses expense or income,
+    // use that as the sign for amounts whose immediate prefix doesn't match a hint word
+    // (e.g. "银八万两" — "银" is not a hint, but the sentence contains "急调"/"速运").
+    const sentenceIsExpense = expenseHints.some((h) => text.includes(h));
+    const sentenceIsIncome = incomeHints.some((h) => text.includes(h));
+    const sentenceSign = (sentenceIsExpense && !sentenceIsIncome) ? -1
+      : (sentenceIsIncome && !sentenceIsExpense) ? 1 : 0;
+
+    function getSign(prefix) {
+      const p = String(prefix || "");
+      const inc = incomeHints.some((h) => p.includes(h));
+      const exp = expenseHints.some((h) => p.includes(h));
+      if (inc && !exp) return 1;
+      if (exp && !inc) return -1;
+      return sentenceSign; // 0 means ambiguous → caller skips
+    }
+
+    // Pattern 1: arabic digits + 万 + unit   e.g. "30万两", "5万石"
+    for (const m of text.matchAll(/([\u4e00-\u9fa5A-Za-z]{0,10})\s*(\d+(?:\.\d+)?)\s*万\s*(两|石)/g)) {
+      const sign = getSign(m[1]);
+      if (!sign) continue;
+      const amount = Math.round(Number(m[2]) * 10000);
+      if (amount <= 0) continue;
+      if (m[3] === "两") addParsed("treasury", sign * amount);
+      if (m[3] === "石") addParsed("grain", sign * amount);
+    }
+
+    // Pattern 2: Chinese numeral + unit   e.g. "八万两", "五千石", "三十万两"
+    // Amount must start with a single Chinese digit (一-九), not a scale char (十百千万)
+    // so we don't accidentally match unrelated characters.
+    const cnDigitMap = { 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+    function parseCnAmount(s) {
+      let result = 0, section = 0, cur = 0;
+      for (const c of String(s)) {
+        if (c in cnDigitMap) { cur = cnDigitMap[c]; }
+        else if (c === "十") { section += (cur === 0 ? 1 : cur) * 10; cur = 0; }
+        else if (c === "百") { section += cur * 100; cur = 0; }
+        else if (c === "千") { section += cur * 1000; cur = 0; }
+        else if (c === "万") { section += cur; result += section * 10000; section = 0; cur = 0; }
+      }
+      return result + section + cur;
+    }
+
+    const cnAmountRe = /([\u4e00-\u9fa5A-Za-z、，。；]{0,10}?)([一二三四五六七八九][零一二三四五六七八九十百千万]*)\s*(两|石)/g;
+    for (const m of text.matchAll(cnAmountRe)) {
+      const sign = getSign(m[1]);
+      if (!sign) continue;
+      const amount = parseCnAmount(m[2]);
+      if (amount <= 0) continue;
+      if (m[3] === "两") addParsed("treasury", sign * amount);
+      if (m[3] === "石") addParsed("grain", sign * amount);
+    }
+
+    return parsed;
+  };
+
   // 常见词条推理
   if (matches(["抄家", "抄家得", "抄了", "没收", "抄" ])) {
     add("treasury", 300000);
@@ -882,6 +950,10 @@ function estimateEffectsFromEdict(edictText) {
     add("corruptionLevel", -5);
     add("civilMorale", 3);
   }
+
+  const explicitDelta = parseExplicitResourceDelta(edictText);
+  if (typeof explicitDelta.treasury === "number") add("treasury", explicitDelta.treasury);
+  if (typeof explicitDelta.grain === "number") add("grain", explicitDelta.grain);
 
   // 如果没有检测到任何关键词，则不估算效果
   return Object.keys(effects).length ? sanitizeStoryEffects(effects) : null;
@@ -1391,8 +1463,11 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   const quarterPanel = renderQuarterAgendaPanel(container, state, onChoice, options);
 
   if (isRigidMode(state)) {
+    const rigidHistory = Array.isArray(state.storyHistory) ? state.storyHistory : [];
+    const latestRigidHistory = rigidHistory.length ? rigidHistory[rigidHistory.length - 1] : null;
+    const latestRigidHistoryDelta = latestRigidHistory?.displayEffects || latestRigidHistory?.effects || null;
     const rigidDelta = state?.rigid?.lastSettlementDelta;
-    if (hasOutcomeDisplayDelta(rigidDelta)) {
+    if (hasOutcomeDisplayDelta(rigidDelta) && !hasOutcomeDisplayDelta(latestRigidHistoryDelta)) {
       renderDeltaCard(currentWrap, rigidDelta, state, "本轮数值变化");
     }
   }

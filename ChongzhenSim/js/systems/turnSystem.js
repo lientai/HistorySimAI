@@ -11,6 +11,7 @@ import { advanceKejuSession, advanceWujuSession, getKejuStateSnapshot, getWujuSt
 import { buildStoryFactsFromState } from "../utils/storyFacts.js";
 import { isRigidMode } from "../rigid/config.js";
 import { ensureRigidState, runRigidTurn } from "../rigid/engine.js";
+import { appendMemoryAnchor, createMemoryAnchor } from "../rigid/memory.js";
 import { computeRigidSettlementDelta } from "../rigid/settlement.js";
 
 let positionsMetaCache = null;
@@ -183,7 +184,7 @@ async function progressWujuByMonth(nextYear, nextMonth) {
     wuju: advanceWujuSession(snapshot, {
       state,
       characters: getAllCharacters(state),
-    }),
+    }, { enableGeneratedCandidates: true }),
   });
 }
 
@@ -214,23 +215,126 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
   if (isRigidMode(getState())) {
     const beforeRigidState = getState();
     const historyKey = `${beforeRigidState.currentYear || 1}_${beforeRigidState.currentMonth || 1}_${beforeRigidState.currentPhase || "morning"}`;
-    const rigidResult = runRigidTurn(getState(), { choiceId, choiceText, choiceHint, effects });
+
+    if (choiceId === "custom_edict") {
+      const newlyFound = extractCustomPoliciesFromEdict(choiceText || "", beforeRigidState.currentYear, beforeRigidState.currentMonth);
+      if (newlyFound.length) {
+        const mergedPolicies = mergeCustomPolicies(beforeRigidState.customPolicies, newlyFound);
+        const fresh = mergedPolicies.filter((item) => !(beforeRigidState.customPolicies || []).some((old) => old.id === item.id));
+        const policyNews = fresh.map((item) => ({
+          title: "新国策设立",
+          summary: `自拟诏书已将“${item.name}”纳入国策，季度结算将同步其长期影响。`,
+          tag: "重要",
+          icon: "📜",
+        }));
+        setState({
+          customPolicies: mergedPolicies,
+          systemNewsToday: [...(beforeRigidState.systemNewsToday || []), ...policyNews],
+        });
+      }
+    }
+
+    const positionsMeta = await getPositionsMeta();
+    const roster = getAllCharacters(beforeRigidState);
+    const derivedAppointmentEffects = deriveAppointmentEffectsFromText(choiceText || "", {
+      positions: positionsMeta?.positions || [],
+      ministers: roster,
+      currentAppointments: beforeRigidState.appointments || {},
+    });
+    let rigidAppliedEffects = effects;
+    if (derivedAppointmentEffects) {
+      const base = rigidAppliedEffects && typeof rigidAppliedEffects === "object" ? { ...rigidAppliedEffects } : {};
+      if (derivedAppointmentEffects.appointments) {
+        base.appointments = {
+          ...(base.appointments && typeof base.appointments === "object" ? base.appointments : {}),
+          ...derivedAppointmentEffects.appointments,
+        };
+      }
+      if (Array.isArray(derivedAppointmentEffects.appointmentDismissals)) {
+        const currentDismissals = Array.isArray(base.appointmentDismissals) ? base.appointmentDismissals : [];
+        base.appointmentDismissals = Array.from(new Set([...currentDismissals, ...derivedAppointmentEffects.appointmentDismissals]));
+      }
+      rigidAppliedEffects = base;
+    }
+
+    const estimatedRigidEffects = estimateEffectsFromEdict(`${choiceText || ""}\n${choiceHint || ""}`);
+    if (estimatedRigidEffects && (typeof estimatedRigidEffects.treasury === "number" || typeof estimatedRigidEffects.grain === "number")) {
+      const base = rigidAppliedEffects && typeof rigidAppliedEffects === "object" ? { ...rigidAppliedEffects } : {};
+      if (typeof base.treasury !== "number" && typeof estimatedRigidEffects.treasury === "number") {
+        base.treasury = estimatedRigidEffects.treasury;
+      }
+      if (typeof base.grain !== "number" && typeof estimatedRigidEffects.grain === "number") {
+        base.grain = estimatedRigidEffects.grain;
+      }
+      rigidAppliedEffects = base;
+    }
+
+    const normalizedRigidEffects = rigidAppliedEffects
+      ? normalizeAppointmentEffects(rigidAppliedEffects, {
+        positions: positionsMeta?.positions || beforeRigidState.positionsMeta?.positions || [],
+        ministers: roster,
+      })
+      : rigidAppliedEffects;
+    const guardedRigidEffects = normalizedRigidEffects ? sanitizeStoryEffects(normalizedRigidEffects) : normalizedRigidEffects;
+
+    const rigidResult = runRigidTurn(getState(), { choiceId, choiceText, choiceHint, effects: guardedRigidEffects || effects });
+    const systemNewsPatch = rigidResult.rejected
+      ? {
+        systemNewsToday: [
+          ...(getState().systemNewsToday || []),
+          {
+            title: "刚性规则拦截",
+            summary: rigidResult.message,
+            tag: "警告",
+            icon: "⚠",
+          },
+        ],
+      }
+      : {};
     setState({
       ...rigidResult.statePatch,
       lastChoiceId: choiceId,
       lastChoiceText: choiceText || "",
       lastChoiceHint: choiceHint || null,
       currentStoryTurn: null,
-      systemNewsToday: [
-        ...(getState().systemNewsToday || []),
-        {
-          title: rigidResult.rejected ? "刚性规则拦截" : "刚性推演完成",
-          summary: rigidResult.message,
-          tag: rigidResult.rejected ? "警告" : "重要",
-          icon: rigidResult.rejected ? "⚠" : "📜",
-        },
-      ],
+      ...systemNewsPatch,
     });
+    if (guardedRigidEffects) applyEffects(guardedRigidEffects);
+
+    const beforeHostiles = Array.isArray(getState().hostileForces) ? getState().hostileForces.map((item) => ({ ...item })) : [];
+    const rigidHostileTurn = resolveHostileForcesAfterChoice(
+      getState(),
+      choiceText || "",
+      guardedRigidEffects || {},
+      getState().currentYear,
+      getState().currentMonth
+    );
+    if (rigidHostileTurn) {
+      setState(rigidHostileTurn.statePatch);
+      if (rigidHostileTurn.effectsPatch) applyEffects(rigidHostileTurn.effectsPatch);
+      if (rigidHostileTurn.prestigeDelta) {
+        const current = getState();
+        setState({ prestige: Math.max(0, Math.min(100, (current.prestige || 0) + rigidHostileTurn.prestigeDelta)) });
+      }
+
+      const hostileAfter = Array.isArray(rigidHostileTurn.statePatch?.hostileForces)
+        ? rigidHostileTurn.statePatch.hostileForces
+        : [];
+      const beforeById = new Map(beforeHostiles.map((item) => [item.id, item]));
+      const newlyDefeatedNames = hostileAfter
+        .filter((item) => item?.id && item.isDefeated && !beforeById.get(item.id)?.isDefeated)
+        .map((item) => item.name || item.id);
+
+      if (newlyDefeatedNames.length) {
+        const current = getState();
+        const nextRigid = { ...(current.rigid || {}) };
+        const anchor = createMemoryAnchor(nextRigid, {
+          summary: `军事开拓结果：${newlyDefeatedNames.join("、")}已灭亡，相关故事线已闭锁。`,
+        });
+        appendMemoryAnchor(nextRigid, anchor);
+        setState({ rigid: nextRigid });
+      }
+    }
 
     const afterRigidState = getState();
     const rigidDisplayDelta = computeRigidSettlementDelta(beforeRigidState, afterRigidState);
@@ -317,6 +421,18 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
     if (Array.isArray(derivedAppointmentEffects.appointmentDismissals)) {
       const currentDismissals = Array.isArray(base.appointmentDismissals) ? base.appointmentDismissals : [];
       base.appointmentDismissals = Array.from(new Set([...currentDismissals, ...derivedAppointmentEffects.appointmentDismissals]));
+    }
+    appliedEffects = base;
+  }
+
+  const estimatedClassicEffects = estimateEffectsFromEdict(`${choiceText || ""}\n${choiceHint || ""}`);
+  if (estimatedClassicEffects && (typeof estimatedClassicEffects.treasury === "number" || typeof estimatedClassicEffects.grain === "number")) {
+    const base = appliedEffects && typeof appliedEffects === "object" ? { ...appliedEffects } : {};
+    if (typeof base.treasury !== "number" && typeof estimatedClassicEffects.treasury === "number") {
+      base.treasury = estimatedClassicEffects.treasury;
+    }
+    if (typeof base.grain !== "number" && typeof estimatedClassicEffects.grain === "number") {
+      base.grain = estimatedClassicEffects.grain;
     }
     appliedEffects = base;
   }

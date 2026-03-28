@@ -167,6 +167,17 @@ export function buildRigidStoryData(state, presets = []) {
     });
 
   const lineText = (line) => String(line || "").replace(/^【[^】]+】\s*/, "").trim();
+  const normalizeSentence = (text) => String(text || "")
+    .replace(/^[；;，,。.!?\s]+/, "")
+    .replace(/[；;，,。.!?\s]+$/, "")
+    .trim();
+  const toTwoSentenceParagraph = (label, lead, lines) => {
+    const parts = (Array.isArray(lines) ? lines : [])
+      .map((item) => normalizeSentence(item))
+      .filter(Boolean);
+    if (!parts.length) return "";
+    return `${label}${normalizeSentence(lead)}。其详如次：${parts.join("；")}。`;
+  };
   const getModule = (id) => modules.find((module) => module && module.id === id) || null;
 
   const module2 = getModule(2);
@@ -187,27 +198,22 @@ export function buildRigidStoryData(state, presets = []) {
   if (narrative.length >= 3) {
     const opening = narrative[0] || "朕临朝听政，诸司奏报纷纭。";
     const decision = (narrative[1] || "本回合所断：未下新旨").replace(/^本回合所断：/, "");
-    const closing = narrative[2] || "今日得失尚可记，然积弊未解。";
+    const closing = normalizeSentence(narrative[2] || "今日得失尚可记，然积弊未解");
 
     storyParagraphs.push(`${opening}本回合你拍板的核心决断是"${decision}"。`);
-    storyParagraphs.push(`朕心独白：${closing}`);
+    storyParagraphs.push(`朕心独白：${closing}。`);
   }
 
-  if (situational.length) {
-    storyParagraphs.push(`时局动态方面：${situational.join("；")}`);
-  }
-  if (advice.length) {
-    storyParagraphs.push(`中枢建议汇总：${advice.join("；")}`);
-  }
-  if (intel.length) {
-    storyParagraphs.push(`穿越情报与技术进展：${intel.join("；")}`);
-  }
-  if (windows.length) {
-    storyParagraphs.push(`历史窗口倒计时：${windows.join("；")}`);
-  }
-  if (risks.length) {
-    storyParagraphs.push(`暗杀风险监控：${risks.join("；")}`);
-  }
+  const situationalParagraph = toTwoSentenceParagraph("时局动态方面：", "诸司章奏并起，朝局脉络渐明", situational);
+  if (situationalParagraph) storyParagraphs.push(situationalParagraph);
+  const adviceParagraph = toTwoSentenceParagraph("中枢建议汇总：", "中枢群议未决，主张各有所偏", advice);
+  if (adviceParagraph) storyParagraphs.push(adviceParagraph);
+  const intelParagraph = toTwoSentenceParagraph("穿越情报与技术进展：", "机密来报与工艺进展，俱关后势", intel);
+  if (intelParagraph) storyParagraphs.push(intelParagraph);
+  const windowsParagraph = toTwoSentenceParagraph("历史窗口倒计时：", "时机转瞬即逝，节点逼近在前", windows);
+  if (windowsParagraph) storyParagraphs.push(windowsParagraph);
+  const risksParagraph = toTwoSentenceParagraph("暗杀风险监控：", "危机未可轻忽，警讯须逐条核验", risks);
+  if (risksParagraph) storyParagraphs.push(risksParagraph);
 
   if (!storyParagraphs.length) {
     storyParagraphs.push("刚性模块正在初始化，朝局信息将于本回合决策后更新。");

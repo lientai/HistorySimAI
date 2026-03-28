@@ -47,6 +47,9 @@ coverage/
 # Local/private markdown notes
 /commit.md
 /EXAMPLE*.md
+ChongzhenSim/科举功能模块.md
+ChongzhenSim/困难模式设计文档.md
+ChongzhenSim/经典模式与困难模式对比文档.md
 
 # Local development tools (Trae IDE / GSD framework)
 .agents/
