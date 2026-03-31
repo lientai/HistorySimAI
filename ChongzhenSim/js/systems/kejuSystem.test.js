@@ -61,11 +61,15 @@ describe("buildKejuCandidatePool", () => {
 });
 
 describe("advanceKejuSession", () => {
-  it("should progress through stages with expected candidate counts", () => {
+  it("should progress through stages with expected candidate counts when generated candidates are disabled", () => {
     const state = createBaseState();
     const characters = createCharacters();
     const random = () => 0.5;
-    const started = advanceKejuSession({ stage: "idle" }, { state, characters }, { random, formatName: (value) => value });
+    const started = advanceKejuSession(
+      { stage: "idle" },
+      { state, characters },
+      { random, formatName: (value) => value, enableGeneratedCandidates: false }
+    );
     expect(started.stage).toBe("xiangshi");
     expect(started.candidatePool).toHaveLength(3);
     expect(started.bureauMomentum).toBeGreaterThan(52);
@@ -82,6 +86,16 @@ describe("advanceKejuSession", () => {
     expect(published.stage).toBe("published");
     expect(published.publishedList).toHaveLength(3);
     expect(published.reserveQuality).toBeGreaterThan(0);
+  });
+
+  it("should include generated candidates by default", () => {
+    const state = createBaseState();
+    const characters = createCharacters();
+    const random = () => 0.5;
+    const started = advanceKejuSession({ stage: "idle" }, { state, characters }, { random, formatName: (value) => value });
+    expect(started.stage).toBe("xiangshi");
+    expect(started.generatedCandidates).toHaveLength(5);
+    expect(started.candidatePool.length).toBeGreaterThanOrEqual(8);
   });
 });
 

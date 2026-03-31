@@ -7,9 +7,10 @@ import "./ui/nationView.js";
 import { setStartPhase } from "./ui/startView.js";
 import { loadJSON } from "./dataLoader.js";
 import { getState, setState } from "./state.js";
-import { loadGame, applyLoadedGame } from "./storage.js";
+import { loadGame, applyLoadedGame, getSavedGameplayMode } from "./storage.js";
 import { initializeCoreGameplayState } from "./systems/coreGameplaySystem.js";
 import { buildStoryFactsFromState } from "./utils/storyFacts.js";
+import { createDefaultRigidState, DEFAULT_RIGID_INITIAL, DEFAULT_RIGID_TRIGGERS } from "./rigid/config.js";
 
 function normalizeCharacterId(rawId, aliasToCanonical) {
   if (typeof rawId !== "string") return "";
@@ -30,8 +31,8 @@ function normalizeAppointmentsMap(appointments, aliasToCanonical) {
   return out;
 }
 
-async function preloadBasicData() {
-  const [config, balanceConfig, characters, factionsData, goals, nationInit, positionsData] = await Promise.all([
+async function preloadBasicData(preferredMode = null) {
+  const [config, balanceConfig, characters, factionsData, goals, nationInit, positionsData, rigidInitialData, rigidTriggerData, rigidHistoryEvents] = await Promise.all([
     loadJSON("data/config.json"),
     loadJSON("data/balanceConfig.json").catch(() => ({})),
     loadJSON("data/characters.json"),
@@ -39,6 +40,9 @@ async function preloadBasicData() {
     loadJSON("data/goals.json").catch(() => []),
     loadJSON("data/nationInit.json").catch(() => ({})),
     loadJSON("data/positions.json").catch(() => ({ positions: [] })),
+    loadJSON("data/rigidInitialState.json").catch(() => DEFAULT_RIGID_INITIAL),
+    loadJSON("data/rigidTriggers.json").catch(() => DEFAULT_RIGID_TRIGGERS),
+    loadJSON("data/rigidHistoryEvents.json").catch(() => []),
   ]);
 
   const allCharacters = characters.characters || characters.ministers || [];
@@ -159,10 +163,22 @@ async function preloadBasicData() {
   const normalizedExistingAppointments = normalizeAppointmentsMap(current.appointments, aliasToCanonical);
   const normalizedDefaultAppointments = normalizeAppointmentsMap(defaultAppointments, aliasToCanonical);
 
+  const selectedMode = current.mode || preferredMode || config?.gameplayMode || "classic";
+  const resolvedRigidState = current.rigid && typeof current.rigid === "object"
+    ? current.rigid
+    : createDefaultRigidState(rigidInitialData || DEFAULT_RIGID_INITIAL);
+  const rigidCalendar = resolvedRigidState?.calendar || { year: 1627, month: 8 };
+
   setState({
     config: {
       ...(config || {}),
       balance: balanceConfig || {},
+      gameplayMode: selectedMode,
+      rigid: {
+        initialState: rigidInitialData || DEFAULT_RIGID_INITIAL,
+        triggers: rigidTriggerData || DEFAULT_RIGID_TRIGGERS,
+        historyEvents: Array.isArray(rigidHistoryEvents) ? rigidHistoryEvents : [],
+      },
     },
     allCharacters,
     factions: mergedFactions,
@@ -176,6 +192,17 @@ async function preloadBasicData() {
     externalPowers,
     provinceStats,
     positionsMeta: positionsData || { positions: [], departments: [] },
+    mode: selectedMode,
+    currentQuarterAgenda: [],
+    currentQuarterFocus: null,
+    rigid: resolvedRigidState,
+    ...(selectedMode === "rigid_v1"
+      ? {
+        currentYear: Math.max(1, (Number(rigidCalendar.year) || 1627) - 1626),
+        currentMonth: Number(rigidCalendar.month) || 8,
+        currentPhase: "morning",
+      }
+      : {}),
   });
 
   setState({ storyFacts: buildStoryFactsFromState(getState()) });
@@ -189,12 +216,13 @@ function shouldShowStartView() {
 async function bootstrap() {
   initLayout();
 
-  const loaded = loadGame();
+  const preferredMode = getSavedGameplayMode();
+  const loaded = loadGame(preferredMode);
   if (loaded) {
     applyLoadedGame(loaded);
   }
 
-  await preloadBasicData();
+  await preloadBasicData(preferredMode);
   const stateAfterLoad = getState();
   updateTopbarByState(stateAfterLoad);
   updateGoalBar(stateAfterLoad);

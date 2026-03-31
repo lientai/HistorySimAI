@@ -513,7 +513,7 @@ async function showWujuPanel() {
     const nextWuju = advanceWujuSession(
       latestWuju,
       { state: latestState, characters: getAllCharactersFromState(latestState) },
-      { formatName: getDisplayName, isAliveCharacter }
+      { formatName: getDisplayName, isAliveCharacter, enableGeneratedCandidates: true }
     );
     patchWujuState(nextWuju);
     showWujuPanel();

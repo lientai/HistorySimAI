@@ -9,11 +9,15 @@ import { AVAILABLE_AVATAR_NAMES, buildNameById } from "../utils/sharedConstants.
 import { applyEffects as applyEffectsModule } from "../utils/effectsProcessor.js";
 import { DISPLAY_STATE_METRICS, buildOutcomeDisplayDelta, captureDisplayStateSnapshot, hasOutcomeDisplayDelta, mergeOutcomeDisplayDelta, renderOutcomeDisplayCard } from "../utils/displayStateMetrics.js";
 import { normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
+import { buildRigidStoryData } from "../rigid/moduleComposer.js";
+import { ensureRigidState, getRigidPresets } from "../rigid/engine.js";
+import { isRigidMode } from "../rigid/config.js";
 
 let storyCache = { key: null, data: null };
 let lastAppliedKey = null;
 let storyHighlightPanelExpanded = false;
 let cachedStoryHighlightRange = null;
+let storyChoiceSubmitting = false;
 
 const MINISTER_NAME_COLORS = [
   "#8B0000", "#2e7d32", "#1565c0", "#e65100", "#6a1b9a",
@@ -836,6 +840,74 @@ function estimateEffectsFromEdict(edictText) {
 
   const matches = (patterns) => patterns.some((p) => text.includes(p));
 
+  const parseExplicitResourceDelta = (sourceText) => {
+    const parsed = {};
+    const addParsed = (key, value) => {
+      if (typeof value !== "number" || value === 0) return;
+      parsed[key] = (parsed[key] || 0) + value;
+    };
+
+    const incomeHints = ["抄", "抄没", "没收", "入库", "充入", "征收", "征缴", "增收", "加征", "追缴", "罚没", "获得", "获", "充盈", "补入"];
+    const expenseHints = ["拨", "拨付", "发放", "发给", "赈", "赈济", "开仓", "支出", "耗费", "减免", "免除", "补发", "军饷", "采买", "修缮", "施放", "急调", "调拨", "调运", "速运"];
+
+    const text = String(sourceText || "");
+
+    // Sentence-level fallback: if the whole sentence clearly expresses expense or income,
+    // use that as the sign for amounts whose immediate prefix doesn't match a hint word
+    // (e.g. "银八万两" — "银" is not a hint, but the sentence contains "急调"/"速运").
+    const sentenceIsExpense = expenseHints.some((h) => text.includes(h));
+    const sentenceIsIncome = incomeHints.some((h) => text.includes(h));
+    const sentenceSign = (sentenceIsExpense && !sentenceIsIncome) ? -1
+      : (sentenceIsIncome && !sentenceIsExpense) ? 1 : 0;
+
+    function getSign(prefix) {
+      const p = String(prefix || "");
+      const inc = incomeHints.some((h) => p.includes(h));
+      const exp = expenseHints.some((h) => p.includes(h));
+      if (inc && !exp) return 1;
+      if (exp && !inc) return -1;
+      return sentenceSign; // 0 means ambiguous → caller skips
+    }
+
+    // Pattern 1: arabic digits + 万 + unit   e.g. "30万两", "5万石"
+    for (const m of text.matchAll(/([\u4e00-\u9fa5A-Za-z]{0,10})\s*(\d+(?:\.\d+)?)\s*万\s*(两|石)/g)) {
+      const sign = getSign(m[1]);
+      if (!sign) continue;
+      const amount = Math.round(Number(m[2]) * 10000);
+      if (amount <= 0) continue;
+      if (m[3] === "两") addParsed("treasury", sign * amount);
+      if (m[3] === "石") addParsed("grain", sign * amount);
+    }
+
+    // Pattern 2: Chinese numeral + unit   e.g. "八万两", "五千石", "三十万两"
+    // Amount must start with a single Chinese digit (一-九), not a scale char (十百千万)
+    // so we don't accidentally match unrelated characters.
+    const cnDigitMap = { 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+    function parseCnAmount(s) {
+      let result = 0, section = 0, cur = 0;
+      for (const c of String(s)) {
+        if (c in cnDigitMap) { cur = cnDigitMap[c]; }
+        else if (c === "十") { section += (cur === 0 ? 1 : cur) * 10; cur = 0; }
+        else if (c === "百") { section += cur * 100; cur = 0; }
+        else if (c === "千") { section += cur * 1000; cur = 0; }
+        else if (c === "万") { section += cur; result += section * 10000; section = 0; cur = 0; }
+      }
+      return result + section + cur;
+    }
+
+    const cnAmountRe = /([\u4e00-\u9fa5A-Za-z、，。；]{0,10}?)([一二三四五六七八九][零一二三四五六七八九十百千万]*)\s*(两|石)/g;
+    for (const m of text.matchAll(cnAmountRe)) {
+      const sign = getSign(m[1]);
+      if (!sign) continue;
+      const amount = parseCnAmount(m[2]);
+      if (amount <= 0) continue;
+      if (m[3] === "两") addParsed("treasury", sign * amount);
+      if (m[3] === "石") addParsed("grain", sign * amount);
+    }
+
+    return parsed;
+  };
+
   // 常见词条推理
   if (matches(["抄家", "抄家得", "抄了", "没收", "抄" ])) {
     add("treasury", 300000);
@@ -878,6 +950,10 @@ function estimateEffectsFromEdict(edictText) {
     add("corruptionLevel", -5);
     add("civilMorale", 3);
   }
+
+  const explicitDelta = parseExplicitResourceDelta(edictText);
+  if (typeof explicitDelta.treasury === "number") add("treasury", explicitDelta.treasury);
+  if (typeof explicitDelta.grain === "number") add("grain", explicitDelta.grain);
 
   // 如果没有检测到任何关键词，则不估算效果
   return Object.keys(effects).length ? sanitizeStoryEffects(effects) : null;
@@ -1071,15 +1147,50 @@ function renderStoryError(container, errorMessage, retryCallback) {
   container.appendChild(block);
 }
 
+function mergeRigidAndLLMStoryParagraphs(rigidParagraphs, llmParagraphs) {
+  const rigid = Array.isArray(rigidParagraphs) ? rigidParagraphs.filter(Boolean) : [];
+  const llm = Array.isArray(llmParagraphs) ? llmParagraphs.filter(Boolean) : [];
+  if (!llm.length) return rigid;
+
+  const normalized = new Set();
+  const out = [];
+  const pushUnique = (text) => {
+    const key = String(text).replace(/\s+/g, "").slice(0, 80);
+    if (!key || normalized.has(key)) return;
+    normalized.add(key);
+    out.push(text);
+  };
+
+  llm.forEach(pushUnique);
+  rigid.slice(0, 3).forEach(pushUnique);
+  return out;
+}
+
+function buildRigidStoryFallback(state) {
+  const ensured = ensureRigidState(state);
+  return buildRigidStoryData(
+    {
+      ...state,
+      rigid: ensured.rigid,
+    },
+    getRigidPresets(state)
+  );
+}
+
 async function loadStoryData(state, container, renderId, onChoice, options) {
   const year = state.currentYear || 1;
   const month = state.currentMonth || 1;
   const phaseKey = state.currentPhase || "morning";
   const path = `data/story/year${year}_month${month}_${phaseKey}.json`;
-  const templateFallbackPath = `data/story/day1_${phaseKey}.json`;
   const cacheKey = `${year}_${month}_${phaseKey}`;
   const config = state.config || {};
+  const rigidMode = isRigidMode(state);
   const isFirstTurn = (state.lastChoiceId == null) && (!Array.isArray(state.storyHistory) || state.storyHistory.length === 0);
+
+  // For hard mode first turn, use dedicated hard_mode_day1_morning.json instead of generic day1_morning.json
+  const templateFallbackPath = (rigidMode && isFirstTurn) 
+    ? `data/story/hard_mode_day1_${phaseKey}.json`
+    : `data/story/day1_${phaseKey}.json`;
 
   if (state.currentStoryTurn && state.currentStoryTurn.key === cacheKey && state.currentStoryTurn.data) {
     storyCache = { key: cacheKey, data: state.currentStoryTurn.data };
@@ -1098,21 +1209,16 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     const lastChoice = state.lastChoiceId != null
       ? { id: state.lastChoiceId, text: state.lastChoiceText || "", hint: state.lastChoiceHint }
       : null;
-    
-    data = await requestStoryTurn(state, lastChoice);
-    loadingBlock.remove();
-    
-    if (renderId != null && container._storyRenderId !== renderId) return null;
-  }
 
-  if (useLLM && data == null) {
+    try {
+      data = await requestStoryTurn(state, lastChoice);
+    } catch (_error) {
+      data = null;
+    } finally {
+      loadingBlock.remove();
+    }
+
     if (renderId != null && container._storyRenderId !== renderId) return null;
-    renderStoryError(container, "剧情返回格式异常（JSON 解析失败）。请点击重新生成，或检查后端模型配置。", () => {
-      storyCache = { key: null, data: null };
-      container.innerHTML = "";
-      renderStoryTurn(getState(), container, onChoice, options);
-    });
-    return null;
   }
 
   if (data == null) {
@@ -1120,13 +1226,13 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
       // Template mode uses a curated baseline script by phase to avoid missing-file noise.
       const templatePath = (config.storyMode === "llm" && !isFirstTurn) ? path : templateFallbackPath;
       data = await loadJSON(templatePath);
-    } catch (e) {
+    } catch (_error) {
       if (renderId != null && container._storyRenderId !== renderId) return null;
-      
-      const errorMessage = useLLM 
+
+      const errorMessage = useLLM
         ? "本回合剧情生成失败，请检查网络或后端配置。"
         : "本回合剧情尚未准备好，请稍后再试。";
-      
+
       renderStoryError(container, errorMessage, () => {
         storyCache = { key: null, data: null };
         container.innerHTML = "";
@@ -1136,9 +1242,33 @@ async function loadStoryData(state, container, renderId, onChoice, options) {
     }
   }
 
-  storyCache = { key: cacheKey, data };
-  setState({ currentStoryTurn: { key: cacheKey, data } });
-  return data;
+  if (rigidMode) {
+    const rigidFallback = buildRigidStoryFallback(state);
+    const rigidGateActive = !!(state?.rigid?.pendingAssassinate || state?.rigid?.pendingBranchEvent || state?.rigid?.court?.strikeState);
+    const incomingChoices = Array.isArray(data?.choices) ? data.choices : [];
+    const mergedChoices = (!rigidGateActive && incomingChoices.length >= 3)
+      ? incomingChoices
+      : rigidFallback.choices;
+    data = {
+      ...rigidFallback,
+      ...(data || {}),
+      header: {
+        ...(rigidFallback.header || {}),
+        ...((data && data.header) || {}),
+      },
+      storyParagraphs: mergeRigidAndLLMStoryParagraphs(rigidFallback.storyParagraphs, data?.storyParagraphs),
+      choices: mergedChoices,
+      rigidMeta: {
+        ...(rigidFallback.rigidMeta || {}),
+        ...((data && data.rigidMeta) || {}),
+      },
+    };
+  }
+
+  const normalizedData = data && typeof data === "object" ? data : {};
+  storyCache = { key: cacheKey, data: normalizedData };
+  setState({ currentStoryTurn: { key: cacheKey, data: normalizedData } });
+  return normalizedData;
 }
 
 function updateStoryState(data) {
@@ -1160,12 +1290,25 @@ function createChoiceButton(choice, onChoice, disabled = false) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "story-action-btn";
-  if (disabled) btn.classList.add("story-action-btn--disabled");
-  btn.disabled = disabled;
+  const localDisabled = disabled || storyChoiceSubmitting;
+  if (localDisabled) btn.classList.add("story-action-btn--disabled");
+  btn.disabled = localDisabled;
   btn.innerHTML = `<div>${choice.text}</div>${choice.hint ? `<span>${choice.hint}</span>` : ""}`;
-  btn.addEventListener("click", () => {
-    if (disabled) return;
-    onChoice(choice.id, choice.text, choice.hint, choice.effects);
+  btn.addEventListener("click", async () => {
+    if (disabled || storyChoiceSubmitting) return;
+    storyChoiceSubmitting = true;
+    const actionsWrap = btn.closest(".story-actions");
+    if (actionsWrap) {
+      actionsWrap.querySelectorAll("button").forEach((node) => {
+        node.disabled = true;
+        node.classList.add("story-action-btn--disabled");
+      });
+    }
+    try {
+      await onChoice(choice.id, choice.text, choice.hint, choice.effects);
+    } finally {
+      storyChoiceSubmitting = false;
+    }
   });
   return btn;
 }
@@ -1319,6 +1462,16 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
 
   const quarterPanel = renderQuarterAgendaPanel(container, state, onChoice, options);
 
+  if (isRigidMode(state)) {
+    const rigidHistory = Array.isArray(state.storyHistory) ? state.storyHistory : [];
+    const latestRigidHistory = rigidHistory.length ? rigidHistory[rigidHistory.length - 1] : null;
+    const latestRigidHistoryDelta = latestRigidHistory?.displayEffects || latestRigidHistory?.effects || null;
+    const rigidDelta = state?.rigid?.lastSettlementDelta;
+    if (hasOutcomeDisplayDelta(rigidDelta) && !hasOutcomeDisplayDelta(latestRigidHistoryDelta)) {
+      renderDeltaCard(currentWrap, rigidDelta, state, "本轮数值变化");
+    }
+  }
+
   const textBlock = document.createElement("div");
   textBlock.className = "edict-block";
   const fullText = buildBlockText(data);
@@ -1360,7 +1513,21 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   actionsWrap.className = "story-actions";
   const requiresQuarterFocus = Array.isArray(state.currentQuarterAgenda) && state.currentQuarterAgenda.length > 0;
   const quarterReady = !!(state.currentQuarterFocus && state.currentQuarterFocus.agendaId && state.currentQuarterFocus.stance && state.currentQuarterFocus.factionId);
-  const disableActions = requiresQuarterFocus && !quarterReady;
+  
+  // Check if we are in the first turn (opening scenario) - if so, don't apply strike block
+  const isFirstTurn = (state.lastChoiceId == null) && (!Array.isArray(state.storyHistory) || state.storyHistory.length === 0);
+  
+  const rigidStrikeBlocked = !isFirstTurn && isRigidMode(state) && !!state?.rigid?.court?.strikeState;
+  const hasStrikeRecoveryChoice = isRigidMode(state)
+    && Array.isArray(data.choices)
+    && data.choices.some((choice) => String(choice?.id || "").startsWith("rigid_strike_"));
+  const disableActions = (requiresQuarterFocus && !quarterReady) || (rigidStrikeBlocked && !hasStrikeRecoveryChoice);
+  if (rigidStrikeBlocked) {
+    const strikeTip = document.createElement("div");
+    strikeTip.className = "story-history-label";
+    strikeTip.textContent = "朝政停摆，无法施政。";
+    currentWrap.appendChild(strikeTip);
+  }
   
   (data.choices || []).forEach((choice) => {
     const btn = createChoiceButton(choice, onChoice, disableActions);
@@ -1370,13 +1537,14 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   const customBtn = document.createElement("button");
   customBtn.type = "button";
   customBtn.className = "story-action-btn story-action-btn--custom";
-  if (disableActions) {
+  if (disableActions || storyChoiceSubmitting) {
     customBtn.disabled = true;
     customBtn.classList.add("story-action-btn--disabled");
   }
   customBtn.innerHTML = `<div>自拟诏书</div><span>亲笔拟定旨意，由朝臣代为施行</span>`;
   customBtn.addEventListener("click", () => {
-    if (disableActions) return;
+    if (disableActions || storyChoiceSubmitting) return;
+    storyChoiceSubmitting = true;
     showCustomEdictPanel(onChoice, state);
   });
   actionsWrap.appendChild(customBtn);
@@ -1388,6 +1556,7 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
 }
 
 export async function renderStoryTurn(state, container, onChoice, options = {}) {
+  storyChoiceSubmitting = false;
   const renderId = options && options.renderId;
   if (renderId != null && container._storyRenderId !== renderId) return;
 
@@ -1468,7 +1637,10 @@ function showCustomEdictPanel(onChoice, state) {
   closeBtn.type = "button";
   closeBtn.className = "custom-edict-panel__close";
   closeBtn.textContent = "\u2715";
-  closeBtn.addEventListener("click", () => overlay.remove());
+  closeBtn.addEventListener("click", () => {
+    storyChoiceSubmitting = false;
+    overlay.remove();
+  });
   header.appendChild(title);
   header.appendChild(closeBtn);
   panel.appendChild(header);
@@ -1541,7 +1713,10 @@ function showCustomEdictPanel(onChoice, state) {
   overlay.appendChild(panel);
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) {
+      storyChoiceSubmitting = false;
+      overlay.remove();
+    }
   });
 
   const app = document.getElementById("app");

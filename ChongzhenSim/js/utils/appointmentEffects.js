@@ -150,9 +150,11 @@ export function deriveAppointmentEffectsFromText(edictText, context = {}) {
 
   const appointMap = {};
   const dismissSet = new Set();
+  const deathMap = {};
 
   const appointKeyword = "(?:任命|擢升|擢任|改任|出任|署理|兼任|命)";
   const dismissKeyword = "(?:免去|罢免|革去|撤去|免职|去职|撤职)";
+  const deathKeyword = "(?:赐死|赐予自尽|赐自尽|赐予|自尽|饮鸩|毒酒)";
 
   positions.forEach((position) => {
     if (!position || typeof position.id !== "string" || typeof position.name !== "string") return;
@@ -204,16 +206,23 @@ export function deriveAppointmentEffectsFromText(edictText, context = {}) {
     if (dismissByPerson.test(text)) {
       dismissSet.add(currentPositionId);
     }
+
+    // Death pattern: "赐死 官员名" or "官员名 赐死" (within 2 characters to stay within same action clause)
+    const deathPattern = new RegExp(`${deathKeyword}.{0,2}${charPattern}|${charPattern}.{0,2}${deathKeyword}`);
+    if (deathPattern.test(text)) {
+      deathMap[characterId] = "赐死";
+    }
   });
 
   // If the same position is both dismissed and appointed in one edict, keep the appointment result only.
   Object.keys(appointMap).forEach((positionId) => dismissSet.delete(positionId));
 
   const appointmentDismissals = Array.from(dismissSet);
-  if (!Object.keys(appointMap).length && !appointmentDismissals.length) return null;
+  if (!Object.keys(appointMap).length && !appointmentDismissals.length && !Object.keys(deathMap).length) return null;
 
   const next = {};
   if (Object.keys(appointMap).length) next.appointments = appointMap;
   if (appointmentDismissals.length) next.appointmentDismissals = appointmentDismissals;
+  if (Object.keys(deathMap).length) next.characterDeath = deathMap;
   return next;
 }

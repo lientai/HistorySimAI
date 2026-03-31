@@ -1,0 +1,100 @@
+﻿[
+  {
+    "id": "purge_wei",
+    "name": "铲除魏忠贤余党",
+    "description": "天启旧局未散，阉党盘根错节。清洗虽可立威，却将迅速引发官场报复性结盟。",
+    "trigger": { "year": 1627, "month": 10 },
+    "impact": { "court": { "authority": 6, "factionFight": 8 }, "chongZhen": { "anxiety": 4 } }
+  },
+  {
+    "id": "platform_dialogue",
+    "name": "平台召对",
+    "description": "召对本为整纲饬纪，却迫使皇帝在清议与行政效率间当场站队。",
+    "trigger": { "year": 1628, "month": 2 },
+    "impact": { "court": { "authority": 4, "resistance": 6 }, "chongZhen": { "distrust": 3 } },
+    "branches": [
+      {
+        "id": "platform_hawk",
+        "name": "力主清议肃贪",
+        "hint": "道德威望上升，但朝堂撕裂加深",
+        "impact": { "court": { "resistance": 4, "factionFight": 5, "authority": 2 }, "chongZhen": { "anxiety": 3 } }
+      },
+      {
+        "id": "platform_balance",
+        "name": "折中调停两派",
+        "hint": "短期缓和冲突，但政令更易打折",
+        "impact": { "court": { "resistance": -2, "authority": -2 }, "chongZhen": { "distrust": 2 } }
+      }
+    ]
+  },
+  {
+    "id": "ningjin_campaign",
+    "name": "宁锦防线整备",
+    "description": "辽东防线仍可维持，但军需缺口与将帅互疑已先于敌军蚕食士气。",
+    "trigger": { "year": 1629, "month": 2 },
+    "impact": { "military": { "liaoDongMorale": 6 }, "finance": { "militaryArrears": 1 } }
+  },
+  {
+    "id": "jisi_change",
+    "name": "己巳之变余波",
+    "description": "京畿震荡后，朝野互相问责。边务失序转化为中枢信任危机。",
+    "trigger": { "year": 1629, "month": 11 },
+    "impact": { "court": { "resistance": 10 }, "military": { "liaoDongMorale": -8 } }
+  },
+  {
+    "id": "yongping_case",
+    "name": "永平失守震荡",
+    "description": "失城不止是战术挫败，更动摇了对地方军镇与统筹能力的最后信心。",
+    "trigger": { "year": 1630, "month": 4 },
+    "impact": { "military": { "rebelScale": 4 }, "court": { "authority": -4 } }
+  },
+  {
+    "id": "shaansi_famine",
+    "name": "陕西饥荒扩大",
+    "description": "旱蝗并作，仓储见底。赈济与军费无法兼得，任何选择都会留下新的裂口。",
+    "trigger": { "year": 1631, "month": 7 },
+    "impact": { "other": { "foodCrisis": 10 }, "military": { "rebelScale": 5 } },
+    "branches": [
+      {
+        "id": "famine_relief",
+        "name": "优先赈灾",
+        "hint": "可暂缓民变，但边饷立刻吃紧",
+        "impact": { "finance": { "treasury": -10 }, "other": { "foodCrisis": -8 }, "military": { "liaoDongMorale": -4 } }
+      },
+      {
+        "id": "famine_military",
+        "name": "优先军费",
+        "hint": "边军稍稳，腹地动荡加剧",
+        "impact": { "finance": { "militaryArrears": -1 }, "military": { "liaoDongMorale": 5, "rebelScale": 3 }, "other": { "foodCrisis": 6 } }
+      }
+    ]
+  },
+  {
+    "id": "xiongwen_canal",
+    "name": "漕运断续",
+    "description": "河道与仓运屡失其时，京畿粮价与军需同步承压，财政修补空间骤缩。",
+    "trigger": { "year": 1633, "month": 3 },
+    "impact": { "finance": { "treasury": -8 }, "other": { "foodCrisis": 6 } }
+  },
+  {
+    "id": "li_zicheng_rise",
+    "name": "流寇坐大",
+    "description": "地方失序由点成面，围剿成本持续攀升，朝廷被迫在多线危机中拉扯。",
+    "trigger": { "year": 1636, "month": 8 },
+    "impact": { "military": { "rebelScale": 8 }, "court": { "resistance": 6 } }
+  },
+  {
+    "id": "qing_offensive",
+    "name": "清军南压",
+    "description": "关外压力转为战略挤压，边镇与中枢对未来判断分歧持续扩大。",
+    "trigger": { "year": 1642, "month": 3 },
+    "impact": { "military": { "liaoDongMorale": -10 }, "court": { "authority": -8 } }
+  },
+  {
+    "id": "beijing_crisis",
+    "name": "京师危局",
+    "description": "内外线同时失守，财政、军心、朝纲几近同时崩盘，已入王朝终局窗口。",
+    "trigger": { "year": 1644, "month": 3 },
+    "impact": { "court": { "resistance": 12 }, "chongZhen": { "anxiety": 12 } }
+  }
+]

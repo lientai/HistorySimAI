@@ -35,6 +35,21 @@ describe("deriveAppointmentEffectsFromText", () => {
     const out = deriveAppointmentEffectsFromText("命工部核查仓储账册，不涉任免", context);
     expect(out).toBeNull();
   });
+
+  it("should extract character death from '赐死' keyword", () => {
+    const out = deriveAppointmentEffectsFromText("赐死温体仁，以示朝纲严明", context);
+    expect(out).toEqual({
+      characterDeath: { wen_tiren: "赐死" },
+    });
+  });
+
+  it("should parse combined appointment, dismissal, and death in one text", () => {
+    const out = deriveAppointmentEffectsFromText("免去温体仁，赐予自尽；任命毕自严为内阁首辅", context);
+    expect(out).toEqual({
+      characterDeath: { wen_tiren: "赐死" },
+      appointments: { neige_shoufu: "bi_ziyan" },
+    });
+  });
 });
 
 describe("normalizeAppointmentEffects", () => {

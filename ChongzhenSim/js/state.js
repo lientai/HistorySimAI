@@ -1,3 +1,5 @@
+import { createDefaultRigidState, DEFAULT_RIGID_INITIAL } from "./rigid/config.js";
+
 const initialState = {
   schemaVersion: 2,
   currentDay: 1,
@@ -107,6 +109,8 @@ const initialState = {
   trackedGoalId: null,
 
   gameStarted: false,
+  mode: "classic",
+  rigid: createDefaultRigidState(DEFAULT_RIGID_INITIAL),
 };
 
 let state = JSON.parse(JSON.stringify(initialState));

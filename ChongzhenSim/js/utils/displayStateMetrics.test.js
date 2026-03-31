@@ -104,7 +104,7 @@ describe("displayStateMetrics", () => {
     expect(entries.find((item) => item.label === "国库")?.value).toBe(120000);
     expect(entries.find((item) => item.label === "边患")?.invertColor).toBe(true);
     expect(entries.find((item) => item.label === "毕自严 忠诚")?.value).toBe(2);
-    expect(entries.find((item) => item.label === "任命 毕自严 → 吏部尚书")?.type).toBe("text");
+    expect(entries.find((item) => item.label === "任命 毕自严 -> 吏部尚书")?.type).toBe("text");
     expect(entries.find((item) => item.label === "免去 户部尚书")?.value).toBe("已生效");
     expect(entries.find((item) => item.label === "处置 温体仁")?.value).toBe("处死");
   });

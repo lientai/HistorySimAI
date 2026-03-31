@@ -1,0 +1,43 @@
+﻿{
+  "assassinateThreshold": 40,
+  "exposureThreshold": 30,
+  "strikeThreshold": 80,
+  "strikeLevels": [
+    {
+      "level": 1,
+      "triggerResistance": 80,
+      "releaseResistance": 72,
+      "releaseTurns": 1
+    },
+    {
+      "level": 2,
+      "triggerResistance": 90,
+      "releaseResistance": 66,
+      "releaseTurns": 2
+    },
+    {
+      "level": 3,
+      "triggerResistance": 96,
+      "releaseResistance": 60,
+      "releaseTurns": 3
+    }
+  ],
+  "hardFloors": {
+    "court.resistance": 15,
+    "court.factionFight": 20,
+    "chongZhen.anxiety": 20
+  },
+  "forbiddenTechKeywords": [
+    "蒸汽机",
+    "后装枪",
+    "电报",
+    "内燃机",
+    "铁路快枪",
+    "马克沁机枪",
+    "坦克",
+    "飞机",
+    "无线电台",
+    "现代化工炸药"
+  ]
+}
+
