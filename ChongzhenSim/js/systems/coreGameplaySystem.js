@@ -1,3 +1,5 @@
+import { isRigidMode } from "../rigid/config.js";
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -1005,6 +1007,13 @@ function deriveAgendaImpactAdjustment(focus, agenda, context = {}) {
 }
 
 export function refreshQuarterAgendaByState(state) {
+  if (isRigidMode(state)) {
+    return {
+      currentQuarterAgenda: [],
+      currentQuarterFocus: null,
+    };
+  }
+
   const month = state.currentMonth || 1;
   if (month % 3 !== 0) {
     return {
@@ -1026,6 +1035,7 @@ export function refreshQuarterAgendaByState(state) {
 }
 
 export function initializeCoreGameplayState(currentState, factions, config, nationInit) {
+  const rigidMode = isRigidMode(currentState) || config?.gameplayMode === "rigid_v1";
   const balance = resolveBalanceConfig(config?.balance);
   const existingSupport = currentState.factionSupport || {};
   const factionSupport = {};
@@ -1070,6 +1080,12 @@ export function initializeCoreGameplayState(currentState, factions, config, nati
     hostileForces: compatResult.hostileForces,
     closedStorylines: compatResult.closedStorylines,
   };
+
+  if (rigidMode) {
+    nextState.currentQuarterAgenda = [];
+    nextState.currentQuarterFocus = null;
+    return nextState;
+  }
 
   const isQuarterMonth = ((currentState.currentMonth || config.startMonth || 1) % 3) === 0;
   if (!isQuarterMonth) {
@@ -1479,9 +1495,10 @@ function buildSystemNews(state, quarterAgenda, resolvedConsequences) {
 }
 
 export function processCoreGameplayTurn(state, choiceText, effectiveEffects, nextYear, nextMonth) {
+  const rigidMode = isRigidMode(state);
   const balance = getBalanceFromState(state);
   const policyBonus = getPolicyBonusSummary(state.unlockedPolicies || [], balance);
-  const focus = state.currentQuarterFocus || null;
+  const focus = rigidMode ? null : (state.currentQuarterFocus || null);
   const selectedAgenda = focus ? (state.currentQuarterAgenda || []).find((item) => item.id === focus.agendaId) : null;
   const appointedMinisterIds = Array.from(
     new Set(
@@ -1506,7 +1523,7 @@ export function processCoreGameplayTurn(state, choiceText, effectiveEffects, nex
     if (focus.factionId) {
       focusFactionDelta[focus.factionId] = 4;
     }
-  } else if ((state.currentQuarterAgenda || []).length && (state.currentMonth || 1) % 3 === 0) {
+  } else if (!rigidMode && (state.currentQuarterAgenda || []).length && (state.currentMonth || 1) % 3 === 0) {
     focusPrestige -= 4;
     focusStrifeDelta += 6;
   }
@@ -1596,7 +1613,7 @@ export function processCoreGameplayTurn(state, choiceText, effectiveEffects, nex
     addEffect(agendaAdjust.directEffects);
   }
 
-  const quarterAgenda = nextMonth % 3 === 0
+  const quarterAgenda = !rigidMode && nextMonth % 3 === 0
     ? buildQuarterAgenda({
       ...state,
       currentYear: nextYear,
@@ -1610,7 +1627,7 @@ export function processCoreGameplayTurn(state, choiceText, effectiveEffects, nex
     })
     : [];
 
-  const quarterReward = nextMonth % 3 === 0 ? 1 : 0;
+  const quarterReward = !rigidMode && nextMonth % 3 === 0 ? 1 : 0;
 
   const nextState = {
     prestige,

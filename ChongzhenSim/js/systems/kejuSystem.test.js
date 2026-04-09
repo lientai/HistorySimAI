@@ -6,6 +6,9 @@ import {
   buildKejuCandidatePool,
   buildKejuRecommendPositions,
   getKejuStateSnapshot,
+  getWujuStateSnapshot,
+  resetKejuForNextCycle,
+  resetWujuForNextCycle,
 } from "./kejuSystem.js";
 
 function createBaseState() {
@@ -43,6 +46,61 @@ describe("getKejuStateSnapshot", () => {
     expect(snapshot.publishedList).toEqual([]);
     expect(snapshot.talentReserve).toEqual([]);
     expect(snapshot.bureauMomentum).toBe(52);
+    expect(snapshot.reserveQuality).toBe(0);
+    expect(snapshot.note).toBe("");
+  });
+});
+
+describe("reset cycle helpers", () => {
+  it("should reset keju published session back to pre-exam stage while preserving reserve", () => {
+    const reset = resetKejuForNextCycle({
+      stage: "published",
+      candidatePool: [{ id: "a" }],
+      publishedList: [{ id: "a" }],
+      talentReserve: [{ candidateId: "a" }],
+      generatedCandidates: [{ id: "g1" }],
+      bureauMomentum: 66,
+      reserveQuality: 88,
+      note: "old",
+    });
+
+    expect(reset.stage).toBe("idle");
+    expect(reset.candidatePool).toEqual([]);
+    expect(reset.publishedList).toEqual([]);
+    expect(reset.generatedCandidates).toEqual([]);
+    expect(reset.talentReserve).toEqual([{ candidateId: "a" }]);
+    expect(reset.reserveQuality).toBe(0);
+    expect(reset.bureauMomentum).toBe(66);
+  });
+
+  it("should reset wuju published session back to pre-exam stage while preserving reserve", () => {
+    const reset = resetWujuForNextCycle({
+      stage: "published",
+      candidatePool: [{ id: "a" }],
+      publishedList: [{ id: "a" }],
+      talentReserve: [{ candidateId: "a" }],
+      generatedCandidates: [{ id: "g1" }],
+      bureauMomentum: 61,
+      reserveQuality: 91,
+      note: "old",
+    });
+
+    expect(reset.stage).toBe("idle");
+    expect(reset.candidatePool).toEqual([]);
+    expect(reset.publishedList).toEqual([]);
+    expect(reset.generatedCandidates).toEqual([]);
+    expect(reset.talentReserve).toEqual([{ candidateId: "a" }]);
+    expect(reset.reserveQuality).toBe(0);
+    expect(reset.bureauMomentum).toBe(61);
+  });
+
+  it("should provide safe defaults for wuju snapshot", () => {
+    const snapshot = getWujuStateSnapshot({});
+    expect(snapshot.stage).toBe("idle");
+    expect(snapshot.candidatePool).toEqual([]);
+    expect(snapshot.publishedList).toEqual([]);
+    expect(snapshot.talentReserve).toEqual([]);
+    expect(snapshot.bureauMomentum).toBe(50);
     expect(snapshot.reserveQuality).toBe(0);
     expect(snapshot.note).toBe("");
   });

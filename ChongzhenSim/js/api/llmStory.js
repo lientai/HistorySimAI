@@ -2,6 +2,7 @@ import { buildStoryRequestBody } from "./requestContext.js";
 import { getApiBase, postJsonAndReadText } from "./httpClient.js";
 import { normalizeStoryPayload, sanitizeStoryEffects } from "./validators.js";
 import { buildNameById } from "../utils/sharedConstants.js";
+import { normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
 
 function getRosterCharacters(state) {
   return Array.isArray(state?.allCharacters) && state.allCharacters.length
@@ -52,7 +53,7 @@ export async function requestStoryTurn(state, lastChoice) {
     header,
     storyParagraphs: normalized.storyParagraphs,
     choices: ensuredChoices,
-    lastChoiceEffects: normalizeLastChoiceEffects(parsed?.lastChoiceEffects),
+    lastChoiceEffects: normalizeLastChoiceEffects(parsed?.lastChoiceEffects, state),
     news: normalized.news,
     publicOpinion: normalized.publicOpinion,
   };
@@ -104,7 +105,7 @@ function normalizeAppointmentsMap(raw) {
   return Object.keys(result).length ? result : undefined;
 }
 
-function normalizeLastChoiceEffects(raw) {
+function normalizeLastChoiceEffects(raw, state) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const effects = sanitizeStoryEffects(raw);
   if (effects.appointments != null) {
@@ -115,7 +116,10 @@ function normalizeLastChoiceEffects(raw) {
       delete effects.appointments;
     }
   }
-  return effects;
+  return normalizeAppointmentEffects(effects, {
+    positions: state?.positionsMeta?.positions || [],
+    ministers: getRosterCharacters(state),
+  }) || effects;
 }
 
 function safeJsonParse(input) {

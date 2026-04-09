@@ -1,6 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { normalizeStoryPayload, parseMinisterReplyPayload, sanitizeStoryEffects } from "./validators.js";
 
+const appointmentContext = {
+  positions: [
+    { id: "neige_shoufu", name: "内阁首辅" },
+    { id: "hubu_shangshu", name: "户部尚书" },
+    { id: "libu_shangshu", name: "吏部尚书" },
+  ],
+  ministers: [
+    { id: "wen_tiren", name: "温体仁" },
+    { id: "bi_ziyan", name: "毕自严" },
+    { id: "wang_yongguang", name: "王永光" },
+  ],
+};
+
 describe("sanitizeStoryEffects", () => {
   it("should clamp unreasonable numeric deltas", () => {
     const out = sanitizeStoryEffects({
@@ -50,6 +63,19 @@ describe("sanitizeStoryEffects", () => {
     });
 
     expect(out.characterDeath).toEqual({ wen_tiren: "赐死" });
+  });
+
+  it("should flatten nested nation fields and resource aliases into treasury and grain", () => {
+    const out = sanitizeStoryEffects({
+      nation: { treasury: 12000, grain: -5000 },
+      silver: 3000,
+      粮草: 2000,
+    });
+
+    expect(out.treasury).toBe(15000);
+    expect(out.grain).toBe(-3000);
+    expect(out.nation).toBeUndefined();
+    expect(out.silver).toBeUndefined();
   });
 });
 
@@ -107,7 +133,7 @@ describe("parseMinisterReplyPayload", () => {
       },
     });
 
-    const out = parseMinisterReplyPayload(payload);
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
     expect(out.ok).toBe(true);
     expect(out.value.reply).toBe("臣遵旨。");
     expect(out.value.loyaltyDelta).toBe(1);
@@ -122,9 +148,50 @@ describe("parseMinisterReplyPayload", () => {
       ],
     });
 
-    const out = parseMinisterReplyPayload(payload);
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
     expect(out.ok).toBe(true);
     expect(out.value.appointments).toEqual({ libu_shangshu: "wang_yongguang" });
+  });
+
+  it("should canonicalize multiple appointments from name-based object payload", () => {
+    const payload = JSON.stringify({
+      reply: "臣已拟定名单。",
+      appointments: {
+        "内阁首辅": "温体仁",
+        "户部尚书": "毕自严",
+        "吏部尚书": "王永光",
+      },
+    });
+
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
+    expect(out.ok).toBe(true);
+    expect(out.value.appointments).toEqual({
+      neige_shoufu: "wen_tiren",
+      hubu_shangshu: "bi_ziyan",
+      libu_shangshu: "wang_yongguang",
+    });
+  });
+
+  it("should canonicalize multiple appointments from array payload into effects as well", () => {
+    const payload = JSON.stringify({
+      reply: "臣遵旨。",
+      effects: { civilMorale: 1 },
+      appointments: [
+        { positionId: "内阁首辅", characterId: "温体仁" },
+        { positionId: "户部尚书", characterId: "毕自严" },
+      ],
+    });
+
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
+    expect(out.ok).toBe(true);
+    expect(out.value.appointments).toEqual({
+      neige_shoufu: "wen_tiren",
+      hubu_shangshu: "bi_ziyan",
+    });
+    expect(out.value.effects.appointments).toEqual({
+      neige_shoufu: "wen_tiren",
+      hubu_shangshu: "bi_ziyan",
+    });
   });
 
   it("should parse effects and keep nation deltas", () => {
@@ -137,7 +204,7 @@ describe("parseMinisterReplyPayload", () => {
       ministerId: "bi_ziyan",
     });
 
-    const out = parseMinisterReplyPayload(payload);
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
     expect(out.ok).toBe(true);
     expect(out.value.effects.treasury).toBe(12000);
     expect(out.value.effects.grain).toBe(-800);
@@ -153,7 +220,7 @@ describe("parseMinisterReplyPayload", () => {
       },
     });
 
-    const out = parseMinisterReplyPayload(payload);
+    const out = parseMinisterReplyPayload(payload, appointmentContext);
     expect(out.ok).toBe(true);
     expect(out.value.effects.civilMorale).toBe(1);
     expect(out.value.effects.loyalty.wen_tiren).toBe(2);

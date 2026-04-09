@@ -80,6 +80,18 @@ describe('applyEffects', () => {
     const result = applyEffects({}, effects, loyalty);
     expect(result.loyalty.bi_ziyan).toBe(70);
   });
+
+  it('should apply nested nation fields and aliases to treasury and grain consistently', () => {
+    const nation = { treasury: 500000, grain: 30000 };
+    const effects = {
+      nation: { treasury: 12000, grain: -5000 },
+      silver: 3000,
+      粮草: 2000,
+    };
+    const result = applyEffects(nation, effects, {});
+    expect(result.nation.treasury).toBe(515000);
+    expect(result.nation.grain).toBe(27000);
+  });
 });
 
 describe('getTreasuryStatus', () => {

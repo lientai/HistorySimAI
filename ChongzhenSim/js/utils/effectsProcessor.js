@@ -1,12 +1,17 @@
 import { PERCENT_KEYS } from "./sharedConstants.js";
+import { normalizeResourceEffectEntries } from "./effectNormalization.js";
 
 export function applyEffects(nation, effects, loyalty) {
   if (!effects) return { nation, loyalty };
-  
+  const normalizedEffects = normalizeResourceEffectEntries(
+    effects,
+    (value) => (typeof value === "number" && Number.isFinite(value) ? value : null)
+  );
+
   const newNation = { ...nation };
   const newLoyalty = { ...loyalty };
-  
-  Object.entries(effects).forEach(([key, value]) => {
+
+  Object.entries(normalizedEffects).forEach(([key, value]) => {
     if (typeof value !== "number") return;
     
     if (key === "treasury" || key === "grain") {
@@ -17,8 +22,8 @@ export function applyEffects(nation, effects, loyalty) {
     }
   });
 
-  if (effects.loyalty && typeof effects.loyalty === "object") {
-    for (const [id, delta] of Object.entries(effects.loyalty)) {
+  if (normalizedEffects.loyalty && typeof normalizedEffects.loyalty === "object") {
+    for (const [id, delta] of Object.entries(normalizedEffects.loyalty)) {
       if (typeof delta !== "number") continue;
       const clampedDelta = Math.max(-20, Math.min(20, delta));
       newLoyalty[id] = Math.max(0, Math.min(100, (newLoyalty[id] || 0) + clampedDelta));

@@ -36,11 +36,14 @@ function resolveUnlockedPolicyTitleMap(unlockedPolicies) {
 
 export function buildSharedContextFromState(state, { compact = false } = {}) {
   const ctx = {};
+  const rigidMode = isRigidMode(state);
 
-  if (state.currentQuarterFocus) {
+  if (!rigidMode && state.currentQuarterFocus) {
     ctx.currentQuarterFocus = state.currentQuarterFocus;
   }
-  setOptionalArray(ctx, "currentQuarterAgenda", state.currentQuarterAgenda, { requireNonEmpty: compact });
+  if (!rigidMode) {
+    setOptionalArray(ctx, "currentQuarterAgenda", state.currentQuarterAgenda, { requireNonEmpty: compact });
+  }
   setOptionalArray(ctx, "customPolicies", state.customPolicies, { requireNonEmpty: compact });
   setOptionalArray(ctx, "hostileForces", state.hostileForces, { requireNonEmpty: compact });
   setOptionalArray(ctx, "closedStorylines", state.closedStorylines, { requireNonEmpty: compact });

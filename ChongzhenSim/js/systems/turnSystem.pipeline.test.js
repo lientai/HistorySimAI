@@ -55,6 +55,12 @@ vi.mock("../layout.js", () => ({
   updateTopbarByState: vi.fn(),
 }));
 
+vi.mock("../router.js", () => ({
+  router: {
+    refreshDesktopCourtAndNation: vi.fn(),
+  },
+}));
+
 vi.mock("./coreGameplaySystem.js", () => ({
   applyProgressionToChoiceEffects: vi.fn((effects) => effects),
   extractCustomPoliciesFromEdict: vi.fn(() => []),
@@ -84,12 +90,46 @@ vi.mock("../utils/appointmentEffects.js", () => ({
 }));
 
 vi.mock("./kejuSystem.js", () => ({
-  getKejuStateSnapshot: vi.fn(() => ({ stage: "idle" })),
-  getWujuStateSnapshot: vi.fn(() => ({ stage: "idle" })),
+  getKejuStateSnapshot: vi.fn((state) => ({
+    stage: state?.keju?.stage || "idle",
+    candidatePool: state?.keju?.candidatePool || [],
+    publishedList: state?.keju?.publishedList || [],
+    talentReserve: state?.keju?.talentReserve || [],
+    generatedCandidates: state?.keju?.generatedCandidates || [],
+    bureauMomentum: state?.keju?.bureauMomentum ?? 52,
+    reserveQuality: state?.keju?.reserveQuality ?? 0,
+    note: state?.keju?.note || "",
+  })),
+  getWujuStateSnapshot: vi.fn((state) => ({
+    stage: state?.wuju?.stage || "idle",
+    candidatePool: state?.wuju?.candidatePool || [],
+    publishedList: state?.wuju?.publishedList || [],
+    talentReserve: state?.wuju?.talentReserve || [],
+    generatedCandidates: state?.wuju?.generatedCandidates || [],
+    bureauMomentum: state?.wuju?.bureauMomentum ?? 50,
+    reserveQuality: state?.wuju?.reserveQuality ?? 0,
+    note: state?.wuju?.note || "",
+  })),
   advanceKejuSession: vi.fn((snapshot) => snapshot),
   advanceWujuSession: vi.fn((snapshot) => snapshot),
-  resetKejuForNextCycle: vi.fn((snapshot) => snapshot),
-  resetWujuForNextCycle: vi.fn((snapshot) => snapshot),
+  resetKejuForNextCycle: vi.fn((snapshot, note) => ({
+    ...snapshot,
+    stage: "idle",
+    candidatePool: [],
+    publishedList: [],
+    generatedCandidates: [],
+    reserveQuality: 0,
+    note,
+  })),
+  resetWujuForNextCycle: vi.fn((snapshot, note) => ({
+    ...snapshot,
+    stage: "idle",
+    candidatePool: [],
+    publishedList: [],
+    generatedCandidates: [],
+    reserveQuality: 0,
+    note,
+  })),
 }));
 
 vi.mock("../utils/storyFacts.js", () => ({
@@ -149,7 +189,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     expect(mocked.renderStoryTurnMock).toHaveBeenCalled();
   });
 
-  it("applies estimated treasury and grain effects in classic mode when text contains amounts", async () => {
+  it("applies estimated treasury and grain effects for custom edict in classic mode", async () => {
     mocked.estimateEffectsFromEdictMock.mockReturnValueOnce({
       treasury: 200000,
       grain: 30000,
@@ -159,7 +199,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     mocked.renderStoryTurnMock.mockImplementation(async (_state, _container, onChoice) => {
       if (!choiceTriggered) {
         choiceTriggered = true;
-        await onChoice("classic_choice", "抄没入库20万两，拨粮3万石赈济", null, null);
+        await onChoice("custom_edict", "抄没入库20万两，拨粮3万石赈济", null, null);
       }
       return { choices: [] };
     });
@@ -174,7 +214,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     }));
   });
 
-  it("completes one rigid-mode turn loop through shared story entry", async () => {
+  it("completes one shared turn loop while rigid mode flag is enabled", async () => {
     setState({
       mode: "rigid_v1",
       config: { ...(getState().config || {}), gameplayMode: "rigid_v1", storyMode: "template", apiBase: "" },
@@ -193,11 +233,44 @@ describe("turnSystem dual-mode one-turn loop", () => {
     await runCurrentTurn(container);
 
     const state = getState();
-    expect(mocked.runRigidTurnMock).toHaveBeenCalled();
-    expect(mocked.computeRigidSettlementDeltaMock).toHaveBeenCalled();
     expect(state.lastChoiceId).toBe("rigid_relief_refugees");
-    expect(state.rigid?.lastSettlementDelta?.rigidRefuteTimes).toBe(1);
+    expect(state.currentMonth).toBe(5);
+    expect(state.currentYear).toBe(3);
+    expect(state.currentQuarterAgenda).toEqual([]);
+    expect(state.currentQuarterFocus).toBeNull();
+    expect(mocked.runRigidTurnMock).not.toHaveBeenCalled();
+    expect(mocked.computeRigidSettlementDeltaMock).not.toHaveBeenCalled();
+    expect(mocked.computeQuarterlyEffectsMock).not.toHaveBeenCalled();
     expect(mocked.renderStoryTurnMock).toHaveBeenCalled();
+  });
+
+  it("clears stale quarterly state instead of reusing it in rigid mode", async () => {
+    setState({
+      mode: "rigid_v1",
+      config: { ...(getState().config || {}), gameplayMode: "rigid_v1", storyMode: "template", apiBase: "" },
+      currentMonth: 6,
+      currentQuarterAgenda: [{ id: "legacy", title: "旧季度议题" }],
+      currentQuarterFocus: { agendaId: "legacy", stance: "support", factionId: "scholar" },
+      lastQuarterSettlement: { year: 3, month: 6, effects: { treasury: 1000 } },
+    });
+
+    let choiceTriggered = false;
+    mocked.renderStoryTurnMock.mockImplementation(async (_state, _container, onChoice) => {
+      if (!choiceTriggered) {
+        choiceTriggered = true;
+        await onChoice("rigid_choice_dynamic", "照旧处置朝务", null, null);
+      }
+      return { choices: [] };
+    });
+
+    const container = document.getElementById("main-view");
+    await runCurrentTurn(container);
+
+    const state = getState();
+    expect(state.currentQuarterAgenda).toEqual([]);
+    expect(state.currentQuarterFocus).toBeNull();
+    expect(state.lastQuarterSettlement).toBeNull();
+    expect(mocked.computeQuarterlyEffectsMock).not.toHaveBeenCalled();
   });
 
   it("applies derived appointment effects in rigid mode", async () => {
@@ -262,7 +335,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     expect(state.customPolicies.some((item) => item.id === "custom_policy_test")).toBe(true);
   });
 
-  it("applies estimated treasury and grain effects in rigid mode when text contains amounts", async () => {
+  it("applies estimated treasury and grain effects for custom edict in rigid mode", async () => {
     setState({
       mode: "rigid_v1",
       config: { ...(getState().config || {}), gameplayMode: "rigid_v1", storyMode: "template", apiBase: "" },
@@ -277,7 +350,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     mocked.renderStoryTurnMock.mockImplementation(async (_state, _container, onChoice) => {
       if (!choiceTriggered) {
         choiceTriggered = true;
-        await onChoice("rigid_choice_dynamic", "拨银30万两，开仓5万石赈济", "国库与粮仓同步调度", null);
+        await onChoice("custom_edict", "拨银30万两，开仓5万石赈济", "国库与粮仓同步调度", null);
       }
       return { choices: [] };
     });
@@ -316,7 +389,58 @@ describe("turnSystem dual-mode one-turn loop", () => {
     expect(resolveHostileForcesAfterChoice).toHaveBeenCalled();
   });
 
-  it("locks closed storylines and appends memory anchor when hostile is defeated in rigid mode", async () => {
+  it("resets published keju and wuju state on month advance", async () => {
+    setState({
+      keju: {
+        stage: "published",
+        candidatePool: [{ id: "keju_a" }],
+        publishedList: [{ id: "keju_a" }],
+        talentReserve: [{ candidateId: "legacy_keju" }],
+        generatedCandidates: [{ id: "keju_g" }],
+        bureauMomentum: 64,
+        reserveQuality: 90,
+        note: "金榜已张",
+      },
+      wuju: {
+        stage: "published",
+        candidatePool: [{ id: "wuju_a" }],
+        publishedList: [{ id: "wuju_a" }],
+        talentReserve: [{ candidateId: "legacy_wuju" }],
+        generatedCandidates: [{ id: "wuju_g" }],
+        bureauMomentum: 58,
+        reserveQuality: 92,
+        note: "武举放榜",
+      },
+    });
+
+    let choiceTriggered = false;
+    mocked.renderStoryTurnMock.mockImplementation(async (_state, _container, onChoice) => {
+      if (!choiceTriggered) {
+        choiceTriggered = true;
+        await onChoice("classic_choice", "整饬吏治", null, null);
+      }
+      return { choices: [] };
+    });
+
+    const container = document.getElementById("main-view");
+    await runCurrentTurn(container);
+
+    const state = getState();
+    expect(state.keju.stage).toBe("idle");
+    expect(state.keju.candidatePool).toEqual([]);
+    expect(state.keju.publishedList).toEqual([]);
+    expect(state.keju.generatedCandidates).toEqual([]);
+    expect(state.keju.talentReserve).toEqual([{ candidateId: "legacy_keju" }]);
+    expect(state.keju.reserveQuality).toBe(0);
+    expect(state.wuju.stage).toBe("idle");
+    expect(state.wuju.candidatePool).toEqual([]);
+    expect(state.wuju.publishedList).toEqual([]);
+    expect(state.wuju.generatedCandidates).toEqual([]);
+    expect(state.wuju.talentReserve).toEqual([{ candidateId: "legacy_wuju" }]);
+    expect(state.wuju.reserveQuality).toBe(0);
+  });
+
+  it("applies hostile storyline closure patch in rigid mode without fabricating memory anchors", async () => {
     setState({
       mode: "rigid_v1",
       config: { ...(getState().config || {}), gameplayMode: "rigid_v1", storyMode: "template", apiBase: "" },
@@ -353,7 +477,7 @@ describe("turnSystem dual-mode one-turn loop", () => {
     const state = getState();
     expect(state.closedStorylines).toContain("流寇残部_线");
     expect(Array.isArray(state.rigid?.memoryAnchors)).toBe(true);
-    expect(state.rigid.memoryAnchors.length).toBeGreaterThan(0);
-    expect(String(state.rigid.memoryAnchors[state.rigid.memoryAnchors.length - 1]?.summary || "")).toContain("已灭亡");
+    expect(state.rigid.memoryAnchors).toEqual([]);
+    expect(state.hostileForces[0]?.isDefeated).toBe(true);
   });
 });

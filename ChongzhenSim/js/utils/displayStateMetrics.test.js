@@ -8,6 +8,8 @@ import {
   getDisplayMetricsBySection,
   mergeOutcomeDisplayDelta,
 } from "./displayStateMetrics.js";
+import { sanitizeStoryEffects } from "../api/validators.js";
+import { applyEffects } from "./effectsProcessor.js";
 
 describe("displayStateMetrics", () => {
   it("should expose nation and governance metrics aligned with nation view", () => {
@@ -107,5 +109,33 @@ describe("displayStateMetrics", () => {
     expect(entries.find((item) => item.label === "任命 毕自严 -> 吏部尚书")?.type).toBe("text");
     expect(entries.find((item) => item.label === "免去 户部尚书")?.value).toBe("已生效");
     expect(entries.find((item) => item.label === "处置 温体仁")?.value).toBe("处死");
+  });
+
+  it("should keep display delta aligned with actual state change for normalized treasury and grain fields", () => {
+    const beforeState = {
+      nation: { treasury: 500000, grain: 30000 },
+      loyalty: {},
+      appointments: {},
+      characterStatus: {},
+    };
+    const normalizedEffects = sanitizeStoryEffects({
+      nation: { treasury: 12000, grain: -5000 },
+      silver: 3000,
+      粮草: 2000,
+    });
+    const applied = applyEffects(beforeState.nation, normalizedEffects, beforeState.loyalty);
+    const afterState = {
+      ...beforeState,
+      nation: applied.nation,
+      loyalty: applied.loyalty,
+    };
+
+    const delta = buildOutcomeDisplayDelta(
+      captureDisplayStateSnapshot(beforeState),
+      captureDisplayStateSnapshot(afterState)
+    );
+
+    expect(delta.treasury).toBe(15000);
+    expect(delta.grain).toBe(-3000);
   });
 });
