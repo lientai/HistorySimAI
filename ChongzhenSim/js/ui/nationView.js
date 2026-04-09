@@ -207,7 +207,7 @@ function deriveProvinceRuntimeState(province, state) {
   };
 }
 
-function renderNationView(container) {
+export function renderNationView(container) {
   const state = getState();
   const rigidMode = isRigidMode(state);
   const factionSupport = state.factionSupport || {};
@@ -545,44 +545,46 @@ function renderNationView(container) {
     root.appendChild(policySection);
   }
 
-  const customPolicySection = createFoldSection(`自定义国策（${Array.isArray(state.customPolicies) ? state.customPolicies.length : 0}）`, (body) => {
-    const customPolicies = Array.isArray(state.customPolicies) ? state.customPolicies : [];
-    if (!customPolicies.length) {
-      const empty = document.createElement("div");
-      empty.className = "nation-feed-empty";
-      empty.textContent = "尚未设立自定义国策。可在自拟诏书中写入“设立某机构定为国策”自动收录。";
-      body.appendChild(empty);
-      return;
-    }
-    const categoryText = {
-      fiscal: "季度财政加成",
-      agri: "季度粮储加成",
-      military: "季度军务加成",
-      governance: "执行与监察加成",
-      general: "综合微幅加成",
-    };
-    customPolicies.forEach((policy) => {
-      const card = document.createElement("div");
-      card.className = "nation-card";
-      const icon = document.createElement("div");
-      icon.className = "nation-card-icon";
-      icon.textContent = "🏛️";
-      const cardBody = document.createElement("div");
-      cardBody.className = "nation-card-body";
-      const titleEl = document.createElement("div");
-      titleEl.className = "nation-card-title";
-      titleEl.textContent = policy.name;
-      const summaryEl = document.createElement("div");
-      summaryEl.className = "nation-card-summary";
-      summaryEl.textContent = `${categoryText[policy.category] || categoryText.general} · 设立于崇祯${policy.createdYear || "?"}年${policy.createdMonth || "?"}月`;
-      cardBody.appendChild(titleEl);
-      cardBody.appendChild(summaryEl);
-      card.appendChild(icon);
-      card.appendChild(cardBody);
-      body.appendChild(card);
+  if (!rigidMode) {
+    const customPolicySection = createFoldSection(`自定义国策（${Array.isArray(state.customPolicies) ? state.customPolicies.length : 0}）`, (body) => {
+      const customPolicies = Array.isArray(state.customPolicies) ? state.customPolicies : [];
+      if (!customPolicies.length) {
+        const empty = document.createElement("div");
+        empty.className = "nation-feed-empty";
+        empty.textContent = "尚未设立自定义国策。可在自拟诏书中写入“设立某机构定为国策”自动收录。";
+        body.appendChild(empty);
+        return;
+      }
+      const categoryText = {
+        fiscal: "季度财政加成",
+        agri: "季度粮储加成",
+        military: "季度军务加成",
+        governance: "执行与监察加成",
+        general: "综合微幅加成",
+      };
+      customPolicies.forEach((policy) => {
+        const card = document.createElement("div");
+        card.className = "nation-card";
+        const icon = document.createElement("div");
+        icon.className = "nation-card-icon";
+        icon.textContent = "🏛️";
+        const cardBody = document.createElement("div");
+        cardBody.className = "nation-card-body";
+        const titleEl = document.createElement("div");
+        titleEl.className = "nation-card-title";
+        titleEl.textContent = policy.name;
+        const summaryEl = document.createElement("div");
+        summaryEl.className = "nation-card-summary";
+        summaryEl.textContent = `${categoryText[policy.category] || categoryText.general} · 设立于崇祯${policy.createdYear || "?"}年${policy.createdMonth || "?"}月`;
+        cardBody.appendChild(titleEl);
+        cardBody.appendChild(summaryEl);
+        card.appendChild(icon);
+        card.appendChild(cardBody);
+        body.appendChild(card);
+      });
     });
-  });
-  root.appendChild(customPolicySection);
+    root.appendChild(customPolicySection);
+  }
 
   // ── 各省情况(折叠) ──
   if (nationInitCache && nationInitCache.provinces) {
