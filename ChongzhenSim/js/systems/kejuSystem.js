@@ -243,6 +243,7 @@ export function resetKejuForNextCycle(kejuState, note = "本届科举已毕，�
     candidatePool: [],
     publishedList: [],
     generatedCandidates: [],
+    reserveQuality: 0,
     note,
   };
 }
@@ -452,6 +453,7 @@ export function resetWujuForNextCycle(wujuState, note = "本届武举已毕，�
     candidatePool: [],
     publishedList: [],
     generatedCandidates: [],
+    reserveQuality: 0,
     note,
   };
 }

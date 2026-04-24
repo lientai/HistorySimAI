@@ -5,14 +5,17 @@ const context = {
   positions: [
     { id: "neige_shoufu", name: "内阁首辅" },
     { id: "hubu_shangshu", name: "户部尚书" },
+    { id: "libu_shangshu", name: "吏部尚书" },
   ],
   ministers: [
     { id: "wen_tiren", name: "温体仁" },
     { id: "bi_ziyan", name: "毕自严" },
+    { id: "wang_yongguang", name: "王永光" },
   ],
   currentAppointments: {
     neige_shoufu: "wen_tiren",
     hubu_shangshu: "bi_ziyan",
+    libu_shangshu: "wang_yongguang",
   },
 };
 
@@ -48,6 +51,67 @@ describe("deriveAppointmentEffectsFromText", () => {
     expect(out).toEqual({
       characterDeath: { wen_tiren: "赐死" },
       appointments: { neige_shoufu: "bi_ziyan" },
+    });
+  });
+
+  it("should parse multiple appointment pairs in one edict without cross-matching", () => {
+    const out = deriveAppointmentEffectsFromText(
+      "任命温体仁为内阁首辅，毕自严为户部尚书，王永光为吏部尚书",
+      context
+    );
+    expect(out).toEqual({
+      appointments: {
+        neige_shoufu: "wen_tiren",
+        hubu_shangshu: "bi_ziyan",
+        libu_shangshu: "wang_yongguang",
+      },
+    });
+  });
+
+  it("should parse multiple dismissals and appointments in the same edict by clause", () => {
+    const out = deriveAppointmentEffectsFromText(
+      "免去温体仁内阁首辅、毕自严户部尚书；任命王永光为内阁首辅，任命温体仁为户部尚书",
+      context
+    );
+    expect(out).toEqual({
+      appointments: {
+        neige_shoufu: "wang_yongguang",
+        hubu_shangshu: "wen_tiren",
+      },
+    });
+  });
+
+  it("should dismiss multiple current holders when one edict names multiple ministers", () => {
+    const out = deriveAppointmentEffectsFromText("即刻免去温体仁、毕自严职务", context);
+    expect(out).toEqual({
+      appointmentDismissals: ["neige_shoufu", "hubu_shangshu"],
+    });
+  });
+
+  it("should parse a realistic mixed edict with multiple promotions and dismissals", () => {
+    const out = deriveAppointmentEffectsFromText(
+      "朕命王永光出任内阁首辅，毕自严仍掌户部尚书，免去温体仁原任。",
+      context
+    );
+    expect(out).toEqual({
+      appointments: {
+        neige_shoufu: "wang_yongguang",
+        hubu_shangshu: "bi_ziyan",
+      },
+    });
+  });
+
+  it("should parse a realistic serial edict with continued clauses", () => {
+    const out = deriveAppointmentEffectsFromText(
+      "着温体仁署理内阁首辅，毕自严转任户部尚书，王永光兼任吏部尚书，毋得迟延。",
+      context
+    );
+    expect(out).toEqual({
+      appointments: {
+        neige_shoufu: "wen_tiren",
+        hubu_shangshu: "bi_ziyan",
+        libu_shangshu: "wang_yongguang",
+      },
     });
   });
 });

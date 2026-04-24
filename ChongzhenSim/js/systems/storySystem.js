@@ -780,6 +780,7 @@ function applyEffects(effects) {
 
 function computeQuarterlyEffects(state, currentMonth) {
   if (typeof currentMonth !== "number") return null;
+  if (isRigidMode(state)) return null;
   if (currentMonth % 3 !== 0) return null;
 
   const nation = state.nation || {};
@@ -847,8 +848,8 @@ function estimateEffectsFromEdict(edictText) {
       parsed[key] = (parsed[key] || 0) + value;
     };
 
-    const incomeHints = ["抄", "抄没", "没收", "入库", "充入", "征收", "征缴", "增收", "加征", "追缴", "罚没", "获得", "获", "充盈", "补入"];
-    const expenseHints = ["拨", "拨付", "发放", "发给", "赈", "赈济", "开仓", "支出", "耗费", "减免", "免除", "补发", "军饷", "采买", "修缮", "施放", "急调", "调拨", "调运", "速运"];
+    const incomeHints = ["抄", "抄没", "没收", "入库", "充入", "征收", "征缴", "增收", "加征", "追缴", "罚没", "获得", "获", "充盈", "补入", "归库", "入银", "输纳", "解库"];
+    const expenseHints = ["拨", "拨付", "发放", "发给", "赈", "赈济", "开仓", "支出", "耗费", "减免", "免除", "补发", "军饷", "采买", "修缮", "施放", "急调", "调拨", "调运", "速运", "发帑", "起运", "发银", "放粮", "支用"];
 
     const text = String(sourceText || "");
 
@@ -870,13 +871,13 @@ function estimateEffectsFromEdict(edictText) {
     }
 
     // Pattern 1: arabic digits + 万 + unit   e.g. "30万两", "5万石"
-    for (const m of text.matchAll(/([\u4e00-\u9fa5A-Za-z]{0,10})\s*(\d+(?:\.\d+)?)\s*万\s*(两|石)/g)) {
+    for (const m of text.matchAll(/([\u4e00-\u9fa5A-Za-z]{0,12})\s*(\d+(?:\.\d+)?)\s*万\s*(两|石|银|银两|白银|现银|粮|粮草|军粮|漕粮|存粮|粮储)/g)) {
       const sign = getSign(m[1]);
       if (!sign) continue;
       const amount = Math.round(Number(m[2]) * 10000);
       if (amount <= 0) continue;
-      if (m[3] === "两") addParsed("treasury", sign * amount);
-      if (m[3] === "石") addParsed("grain", sign * amount);
+      if (["两", "银", "银两", "白银", "现银"].includes(m[3])) addParsed("treasury", sign * amount);
+      if (["石", "粮", "粮草", "军粮", "漕粮", "存粮", "粮储"].includes(m[3])) addParsed("grain", sign * amount);
     }
 
     // Pattern 2: Chinese numeral + unit   e.g. "八万两", "五千石", "三十万两"
@@ -895,14 +896,14 @@ function estimateEffectsFromEdict(edictText) {
       return result + section + cur;
     }
 
-    const cnAmountRe = /([\u4e00-\u9fa5A-Za-z、，。；]{0,10}?)([一二三四五六七八九][零一二三四五六七八九十百千万]*)\s*(两|石)/g;
+    const cnAmountRe = /([\u4e00-\u9fa5A-Za-z、，。；]{0,12}?)([一二三四五六七八九][零一二三四五六七八九十百千万]*)\s*(两|石|银|银两|白银|现银|粮|粮草|军粮|漕粮|存粮|粮储)/g;
     for (const m of text.matchAll(cnAmountRe)) {
       const sign = getSign(m[1]);
       if (!sign) continue;
       const amount = parseCnAmount(m[2]);
       if (amount <= 0) continue;
-      if (m[3] === "两") addParsed("treasury", sign * amount);
-      if (m[3] === "石") addParsed("grain", sign * amount);
+      if (["两", "银", "银两", "白银", "现银"].includes(m[3])) addParsed("treasury", sign * amount);
+      if (["石", "粮", "粮草", "军粮", "漕粮", "存粮", "粮储"].includes(m[3])) addParsed("grain", sign * amount);
     }
 
     return parsed;
@@ -979,6 +980,8 @@ function auditCustomEdictCorrection(prevEffects, nextEffects, deltaEffects) {
 
 function computeEffectDelta(prevEffects, nextEffects) {
   if (!nextEffects) return null;
+  const normalizedPrevEffects = sanitizeStoryEffects(prevEffects || {});
+  const normalizedNextEffects = sanitizeStoryEffects(nextEffects);
   const delta = {};
 
   const addDelta = (key, value) => {
@@ -988,23 +991,23 @@ function computeEffectDelta(prevEffects, nextEffects) {
 
   // Only reconcile keys explicitly provided by LLM `nextEffects`.
   // Missing keys mean "no correction", not "reset to 0".
-  const nextKeys = Object.keys(nextEffects);
+  const nextKeys = Object.keys(normalizedNextEffects);
   for (const key of nextKeys) {
     if (key === "loyalty") continue;
-    const prevVal = prevEffects && typeof prevEffects[key] === "number" ? prevEffects[key] : 0;
-    const nextVal = typeof nextEffects[key] === "number" ? nextEffects[key] : 0;
-    if (typeof nextEffects[key] !== "number") continue;
+    const prevVal = typeof normalizedPrevEffects[key] === "number" ? normalizedPrevEffects[key] : 0;
+    const nextVal = typeof normalizedNextEffects[key] === "number" ? normalizedNextEffects[key] : 0;
+    if (typeof normalizedNextEffects[key] !== "number") continue;
     const diff = nextVal - prevVal;
     if (diff !== 0) addDelta(key, diff);
   }
 
-  if (nextEffects.loyalty && typeof nextEffects.loyalty === "object") {
-    const prevLoyalty = (prevEffects && prevEffects.loyalty) || {};
-    const userIds = new Set([...Object.keys(prevLoyalty), ...Object.keys(nextEffects.loyalty)]);
+  if (normalizedNextEffects.loyalty && typeof normalizedNextEffects.loyalty === "object") {
+    const prevLoyalty = normalizedPrevEffects.loyalty || {};
+    const userIds = new Set([...Object.keys(prevLoyalty), ...Object.keys(normalizedNextEffects.loyalty)]);
     const loyaltyDelta = {};
     for (const id of userIds) {
       const prevVal = typeof prevLoyalty[id] === "number" ? prevLoyalty[id] : 0;
-      const nextVal = typeof nextEffects.loyalty[id] === "number" ? nextEffects.loyalty[id] : 0;
+      const nextVal = typeof normalizedNextEffects.loyalty[id] === "number" ? normalizedNextEffects.loyalty[id] : 0;
       const diff = nextVal - prevVal;
       if (diff !== 0) loyaltyDelta[id] = diff;
     }
@@ -1069,6 +1072,7 @@ function renderChosenChoice(container, chosenChoice) {
 }
 
 function isQuarterSettlementMonth(state) {
+  if (isRigidMode(state)) return false;
   return !!(
     state?.lastQuarterSettlement &&
     state.lastQuarterSettlement.year === state.currentYear &&
@@ -1314,6 +1318,7 @@ function createChoiceButton(choice, onChoice, disabled = false) {
 }
 
 function renderQuarterAgendaPanel(container, state, onChoice, options = {}) {
+  if (isRigidMode(state)) return null;
   const agenda = Array.isArray(state.currentQuarterAgenda) ? state.currentQuarterAgenda : [];
   if (!agenda.length) return;
 
@@ -1434,7 +1439,7 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   currentWrap.className = "edict-current-wrap";
   container.appendChild(currentWrap);
 
-  const settlement = state.lastQuarterSettlement;
+  const settlement = isRigidMode(state) ? null : state.lastQuarterSettlement;
   if (
     settlement &&
     settlement.year === state.currentYear &&
@@ -1511,7 +1516,7 @@ function renderCurrentTurn(container, data, state, phaseLabels, onChoice, option
   
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "story-actions";
-  const requiresQuarterFocus = Array.isArray(state.currentQuarterAgenda) && state.currentQuarterAgenda.length > 0;
+  const requiresQuarterFocus = !isRigidMode(state) && Array.isArray(state.currentQuarterAgenda) && state.currentQuarterAgenda.length > 0;
   const quarterReady = !!(state.currentQuarterFocus && state.currentQuarterFocus.agendaId && state.currentQuarterFocus.stance && state.currentQuarterFocus.factionId);
   
   // Check if we are in the first turn (opening scenario) - if so, don't apply strike block

@@ -10,6 +10,13 @@ function toPattern(text) {
   return escapeRegExp(compactText(text));
 }
 
+function splitActionClauses(text) {
+  return String(text || "")
+    .split(/[，；。！？\n]+|(?=(?:并|并且|同时|另行|另|再|仍|并命)?(?:任命|擢升|擢任|改任|命|着|免去|罢免|革去|撤去|免职|去职|撤职|赐死|赐予自尽|赐自尽|赐予|自尽|饮鸩|毒酒))/)
+    .map((part) => compactText(part))
+    .filter(Boolean);
+}
+
 function buildCurrentHolderByPosition(currentAppointments) {
   const source = currentAppointments && typeof currentAppointments === "object" ? currentAppointments : {};
   const map = {};
@@ -43,10 +50,19 @@ function canonicalizePositionText(value) {
   return text;
 }
 
+function buildAlternation(values) {
+  return values
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map((value) => escapeRegExp(value))
+    .join("|");
+}
+
 function buildPositionResolvers(positions) {
   const byId = new Map();
   const byName = new Map();
   const byCanonicalName = new Map();
+  const aliasesById = new Map();
   (Array.isArray(positions) ? positions : []).forEach((position) => {
     const id = normalizeString(position?.id);
     const name = normalizeString(position?.name);
@@ -54,6 +70,10 @@ function buildPositionResolvers(positions) {
     if (name) byName.set(name, id || name);
     const canonicalName = canonicalizePositionText(name);
     if (canonicalName) byCanonicalName.set(canonicalName, id || name);
+    const aliases = new Set();
+    if (name) aliases.add(compactText(name));
+    if (canonicalName) aliases.add(canonicalName);
+    if (id) aliasesById.set(id || name, Array.from(aliases).filter(Boolean));
   });
 
   return {
@@ -80,17 +100,24 @@ function buildPositionResolvers(positions) {
       if (bestId) return bestId;
       return "";
     },
+    getPositionAliases() {
+      return aliasesById;
+    },
   };
 }
 
 function buildMinisterResolvers(ministers) {
   const byId = new Map();
   const byName = new Map();
+  const aliasesById = new Map();
   (Array.isArray(ministers) ? ministers : []).forEach((minister) => {
     const id = normalizeString(minister?.id);
     const name = normalizeString(minister?.name);
     if (id) byId.set(id, id);
     if (name) byName.set(name, id || name);
+    const aliases = new Set();
+    if (name) aliases.add(compactText(name));
+    if (id) aliasesById.set(id || name, Array.from(aliases).filter(Boolean));
   });
 
   return {
@@ -101,7 +128,23 @@ function buildMinisterResolvers(ministers) {
       if (byName.has(text)) return byName.get(text);
       return "";
     },
+    getMinisterAliases() {
+      return aliasesById;
+    },
   };
+}
+
+function collectRegexMatches(text, regex) {
+  const matches = [];
+  if (!text || !(regex instanceof RegExp)) return matches;
+  regex.lastIndex = 0;
+  let match = regex.exec(text);
+  while (match) {
+    matches.push(match);
+    if (match.index === regex.lastIndex) regex.lastIndex += 1;
+    match = regex.exec(text);
+  }
+  return matches;
 }
 
 export function normalizeAppointmentEffects(effects, context = {}) {
@@ -147,70 +190,92 @@ export function deriveAppointmentEffectsFromText(edictText, context = {}) {
   const positions = Array.isArray(context.positions) ? context.positions : [];
   const currentAppointments = buildCurrentHolderByPosition(context.currentAppointments);
   const currentPositionByCharacter = buildCurrentPositionByCharacter(context.currentAppointments);
+  const { resolvePositionId, getPositionAliases } = buildPositionResolvers(positions);
+  const { resolveMinisterId, getMinisterAliases } = buildMinisterResolvers(ministers);
 
   const appointMap = {};
   const dismissSet = new Set();
   const deathMap = {};
 
-  const appointKeyword = "(?:任命|擢升|擢任|改任|出任|署理|兼任|命)";
+  const appointKeyword = "(?:任命|擢升|擢任|改任|命|着)";
   const dismissKeyword = "(?:免去|罢免|革去|撤去|免职|去职|撤职)";
   const deathKeyword = "(?:赐死|赐予自尽|赐自尽|赐予|自尽|饮鸩|毒酒)";
+  const relationKeyword = "(?:为|任|出任|担任|署理|兼任|转任|掌|仍掌)";
+  const ministerPattern = buildAlternation(
+    Array.from(getMinisterAliases().values()).flat()
+  );
+  const positionPattern = buildAlternation(
+    Array.from(getPositionAliases().values()).flat()
+  );
 
-  positions.forEach((position) => {
-    if (!position || typeof position.id !== "string" || typeof position.name !== "string") return;
-    const positionId = position.id.trim();
-    const positionName = position.name.trim();
-    if (!positionId || !positionName) return;
+  if (!ministerPattern || !positionPattern) return null;
 
-    const posPattern = toPattern(positionName);
-    const dismissByPosition = new RegExp(`${dismissKeyword}.{0,10}${posPattern}|${posPattern}.{0,8}${dismissKeyword}`);
-    if (dismissByPosition.test(text)) {
-      dismissSet.add(positionId);
+  const clauses = splitActionClauses(edictText);
+
+  let lastMentionedMinisterIds = [];
+
+  clauses.forEach((clause) => {
+    if (!clause) return;
+
+    const clauseAppointments = {};
+    const hasAppointKeyword = new RegExp(appointKeyword).test(clause);
+    const hasDismissKeyword = new RegExp(dismissKeyword).test(clause);
+    const hasDeathKeyword = new RegExp(deathKeyword).test(clause);
+    const mentionedMinisterIds = collectRegexMatches(clause, new RegExp(`(${ministerPattern})`, "g"))
+      .map((match) => resolveMinisterId(match[1]))
+      .filter(Boolean);
+
+    if (hasDeathKeyword) {
+      const deathTargets = mentionedMinisterIds.length ? mentionedMinisterIds : lastMentionedMinisterIds;
+      deathTargets.forEach((ministerId) => {
+        if (ministerId) deathMap[ministerId] = "赐死";
+      });
     }
 
-    ministers.forEach((minister) => {
-      if (!minister || typeof minister.id !== "string" || typeof minister.name !== "string") return;
-      const characterId = minister.id.trim();
-      const characterName = minister.name.trim();
-      if (!characterId || !characterName) return;
+    const hasExplicitAppointmentPair = new RegExp(`(${ministerPattern})(?:${relationKeyword})(${positionPattern})`).test(clause);
 
-      const charPattern = toPattern(characterName);
+    if (hasAppointKeyword || (hasExplicitAppointmentPair && !hasDismissKeyword && !hasDeathKeyword)) {
+      const pairRegex = new RegExp(`(${ministerPattern})(?:${relationKeyword})(${positionPattern})`, "g");
+      collectRegexMatches(clause, pairRegex).forEach((match) => {
+        const ministerId = resolveMinisterId(match[1]);
+        const positionId = resolvePositionId(match[2]);
+        if (!ministerId || !positionId) return;
+        clauseAppointments[positionId] = ministerId;
+      });
 
-      const appointPattern = new RegExp(
-        `${appointKeyword}.{0,10}${charPattern}.{0,8}(?:为|任|出任|担任)?${posPattern}|${charPattern}.{0,8}${appointKeyword}.{0,8}(?:为|任|出任|担任)?${posPattern}|${charPattern}.{0,4}(?:为|任|出任|担任)${posPattern}`
-      );
-      if (appointPattern.test(text)) {
-        appointMap[positionId] = characterId;
+      if (!Object.keys(clauseAppointments).length) {
+        const loosePairRegex = new RegExp(`(?:${appointKeyword})(${ministerPattern})(?:${positionPattern})`, "g");
+        collectRegexMatches(clause, loosePairRegex).forEach((match) => {
+          const ministerId = resolveMinisterId(match[1]);
+          const chunk = match[0].replace(new RegExp(`^(?:${appointKeyword})`), "").replace(match[1], "");
+          const positionId = resolvePositionId(chunk);
+          if (!ministerId || !positionId) return;
+          clauseAppointments[positionId] = ministerId;
+        });
       }
+    }
 
-      const dismissByPersonAndPosition = new RegExp(
-        `${dismissKeyword}.{0,8}${charPattern}.{0,8}${posPattern}|${charPattern}.{0,8}${dismissKeyword}.{0,8}${posPattern}`
-      );
-      if (dismissByPersonAndPosition.test(text)) {
-        dismissSet.add(positionId);
-      }
+    Object.entries(clauseAppointments).forEach(([positionId, ministerId]) => {
+      appointMap[positionId] = ministerId;
     });
-  });
 
-  ministers.forEach((minister) => {
-    if (!minister || typeof minister.id !== "string" || typeof minister.name !== "string") return;
-    const characterId = minister.id.trim();
-    const characterName = minister.name.trim();
-    if (!characterId || !characterName) return;
+    if (hasDismissKeyword) {
+      const positionRegex = new RegExp(`(${positionPattern})`, "g");
+      collectRegexMatches(clause, positionRegex).forEach((match) => {
+        const positionId = resolvePositionId(match[1]);
+        if (positionId && !clauseAppointments[positionId]) dismissSet.add(positionId);
+      });
 
-    const currentPositionId = currentPositionByCharacter[characterId];
-    if (!currentPositionId) return;
-
-    const charPattern = toPattern(characterName);
-    const dismissByPerson = new RegExp(`${dismissKeyword}.{0,8}${charPattern}|${charPattern}.{0,8}${dismissKeyword}`);
-    if (dismissByPerson.test(text)) {
-      dismissSet.add(currentPositionId);
+      const ministerRegex = new RegExp(`(${ministerPattern})`, "g");
+      collectRegexMatches(clause, ministerRegex).forEach((match) => {
+        const ministerId = resolveMinisterId(match[1]);
+        const currentPositionId = currentPositionByCharacter[ministerId];
+        if (currentPositionId && !clauseAppointments[currentPositionId]) dismissSet.add(currentPositionId);
+      });
     }
 
-    // Death pattern: "赐死 官员名" or "官员名 赐死" (within 2 characters to stay within same action clause)
-    const deathPattern = new RegExp(`${deathKeyword}.{0,2}${charPattern}|${charPattern}.{0,2}${deathKeyword}`);
-    if (deathPattern.test(text)) {
-      deathMap[characterId] = "赐死";
+    if (mentionedMinisterIds.length) {
+      lastMentionedMinisterIds = Array.from(new Set(mentionedMinisterIds));
     }
   });
 

@@ -1,3 +1,6 @@
+import { normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
+import { normalizeResourceEffectEntries } from "../utils/effectNormalization.js";
+
 function asParagraphArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string" && value.trim()) {
@@ -56,7 +59,7 @@ function isValidEffectEntityId(value) {
 
 export function sanitizeStoryEffects(effects) {
   if (!effects || typeof effects !== "object" || Array.isArray(effects)) return {};
-  const out = { ...effects };
+  const out = normalizeResourceEffectEntries(effects, parseNumberish);
 
   for (const [key, value] of Object.entries(out)) {
     const numeric = parseNumberish(value);
@@ -200,7 +203,7 @@ export function normalizeStoryPayload(parsed, state) {
   };
 }
 
-export function parseMinisterReplyPayload(payloadText) {
+export function parseMinisterReplyPayload(payloadText, context = {}) {
   function normalizeAppointmentsMap(raw) {
     if (!raw) return undefined;
     if (!Array.isArray(raw)) {
@@ -252,16 +255,24 @@ export function parseMinisterReplyPayload(payloadText) {
         : null);
 
   const effects = effectsSource ? sanitizeStoryEffects(effectsSource) : undefined;
-  if (effects && appointments) {
-    effects.appointments = appointments;
+  const normalizedStandaloneAppointments = appointments
+    ? normalizeAppointmentEffects({ appointments }, context)?.appointments || appointments
+    : undefined;
+
+  if (effects && normalizedStandaloneAppointments) {
+    effects.appointments = normalizedStandaloneAppointments;
   }
 
-  if (effects && typeof loyaltyDelta === "number" && loyaltyDelta !== 0) {
-    const baseLoyalty = effects.loyalty && typeof effects.loyalty === "object" ? { ...effects.loyalty } : {};
+  const normalizedEffects = effects
+    ? normalizeAppointmentEffects(effects, context) || effects
+    : effects;
+
+  if (normalizedEffects && typeof loyaltyDelta === "number" && loyaltyDelta !== 0) {
+    const baseLoyalty = normalizedEffects.loyalty && typeof normalizedEffects.loyalty === "object" ? { ...normalizedEffects.loyalty } : {};
     if (typeof data.ministerId === "string" && data.ministerId.trim()) {
       baseLoyalty[data.ministerId.trim()] = (baseLoyalty[data.ministerId.trim()] || 0) + loyaltyDelta;
     }
-    effects.loyalty = baseLoyalty;
+    normalizedEffects.loyalty = baseLoyalty;
   }
 
   return {
@@ -269,8 +280,8 @@ export function parseMinisterReplyPayload(payloadText) {
     value: {
       reply: data.reply,
       loyaltyDelta,
-      appointments,
-      effects,
+      appointments: normalizedStandaloneAppointments,
+      effects: normalizedEffects,
     },
   };
 }

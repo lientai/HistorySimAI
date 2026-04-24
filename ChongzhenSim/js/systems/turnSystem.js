@@ -8,6 +8,8 @@ import { sanitizeStoryEffects } from "../api/validators.js";
 import { loadJSON } from "../dataLoader.js";
 import { buildOutcomeDisplayDelta, captureDisplayStateSnapshot } from "../utils/displayStateMetrics.js";
 import { deriveAppointmentEffectsFromText, normalizeAppointmentEffects } from "../utils/appointmentEffects.js";
+import { getKejuStateSnapshot, getWujuStateSnapshot, resetKejuForNextCycle, resetWujuForNextCycle } from "./kejuSystem.js";
+import { isRigidMode } from "../rigid/config.js";
 
 let positionsMetaCache = null;
 const CHONGZHEN_BASE_YEAR = 1627;
@@ -113,6 +115,31 @@ function progressNaturalMinisterDeaths(nextYear, nextMonth) {
   });
 }
 
+function resetPublishedExamCyclesForMonth() {
+  const state = getState();
+  const nextPatch = {};
+  const kejuSnapshot = getKejuStateSnapshot(state);
+  const wujuSnapshot = getWujuStateSnapshot(state);
+
+  if (kejuSnapshot.stage === "published") {
+    nextPatch.keju = resetKejuForNextCycle(
+      kejuSnapshot,
+      "上届科举已毕，礼部按月重置考务，等待重新开科。"
+    );
+  }
+
+  if (wujuSnapshot.stage === "published") {
+    nextPatch.wuju = resetWujuForNextCycle(
+      wujuSnapshot,
+      "上届武举已毕，兵部按月重置考务，等待重新开科。"
+    );
+  }
+
+  if (Object.keys(nextPatch).length) {
+    setState(nextPatch);
+  }
+}
+
 export function runCurrentTurn(container, options = {}) {
   const state = getState();
   return renderStoryTurn(state, container, handleChoice, options);
@@ -214,6 +241,8 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
     currentPhase: "morning", // 保持单一阶段展示
   });
 
+  resetPublishedExamCyclesForMonth();
+
   const coreTurn = processCoreGameplayTurn(getState(), choiceText || "", guardedEffects, nextYear, nextMonth);
   setState(coreTurn.statePatch);
   if (coreTurn.consequenceEffects) {
@@ -235,7 +264,7 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
   progressNaturalMinisterDeaths(nextYear, nextMonth);
 
   // 每季度（3 个月）自动加入税收/粮仓收入
-  const quarterEffects = computeQuarterlyEffects(getState(), nextMonth);
+  const quarterEffects = isRigidMode(getState()) ? null : computeQuarterlyEffects(getState(), nextMonth);
   if (quarterEffects) {
     applyEffects(quarterEffects);
     const stateAfterQuarter = getState();
@@ -267,7 +296,9 @@ async function handleChoice(choiceId, choiceText, choiceHint, effects) {
   }
 
   // 用本回合全部结算后的最新状态重算季度议题，避免议题落后于实时局势
-  const agendaPatch = refreshQuarterAgendaByState(getState());
+  const agendaPatch = isRigidMode(getState())
+    ? { currentQuarterAgenda: [], currentQuarterFocus: null }
+    : refreshQuarterAgendaByState(getState());
   setState(agendaPatch);
 
   const stateAfterTurn = getState();

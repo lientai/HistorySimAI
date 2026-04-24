@@ -45,5 +45,7 @@ describe("buildStoryRequestBody", () => {
     expect(body.rigid.lastOutputModules).toHaveLength(2);
     expect(body.rigid.lastOutputModules[0].title).toBe("叙事正文");
     expect(body.lastChoiceText).toBe("bar");
+    expect(body.currentQuarterAgenda).toBeUndefined();
+    expect(body.currentQuarterFocus).toBeUndefined();
   });
 });
